@@ -1,10 +1,5 @@
-import { DiscordHono } from 'discord-hono'
+import * as handlers from './commands'
+import { factory } from './init'
 
-const app = new DiscordHono()
-
-// Listen for the /ping command sent from Discord
-app.command('ping', (c) => {
-  return c.res('Pong! 🏓')
-})
-
-export default app
+// Automatically loads all command handlers in src/commands/
+export default factory.discord().loader(Object.values(handlers))

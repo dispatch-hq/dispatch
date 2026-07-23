@@ -1,8 +1,9 @@
-import { Command, register } from 'discord-hono'
+import { register } from 'discord-hono'
+import * as handlers from './commands'
+import { factory } from './init'
 
-const commands = [
-  new Command('ping', 'Responds with Pong!'),
-]
+// Get command definitions directly from your handlers
+const commands = factory.getCommands(Object.values(handlers))
 
 register(
   commands,
