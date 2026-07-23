@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "register": "tsx --env-file=.env src/register.ts"
+    "dev:register": "tsx --env-file=.dev.vars src/register.ts",
+    "prod:register": "tsx --env-file=.env src/register.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
