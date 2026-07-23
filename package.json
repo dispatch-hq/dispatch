@@ -2,17 +2,20 @@
   "name": "flash",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "test": "vitest",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "register": "tsx --env-file=.env src/register.ts"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.12.4",
     "@types/node": "^26.1.1",
     "discord-api-types": "^0.38.50",
+    "tsx": "^4.23.1",
     "typescript": "^5.5.2",
     "vitest": "~3.2.0",
     "wrangler": "^4.113.0"
