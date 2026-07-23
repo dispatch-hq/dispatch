@@ -27,7 +27,10 @@
 
     /* Completeness */
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": [
+      "node",
+      "@cloudflare/workers-types"
+    ]
   },
   "exclude": [],
   "include": ["worker-configuration.d.ts", "src/**/*.ts"]

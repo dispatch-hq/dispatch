@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "dev:db": "wrangler d1 execute dispatch-db --local --file=schema.sql",
+    "prod:db": "wrangler d1 execute dispatch-db --remote --file=schema.sql",
     "dev:register": "tsx --env-file=.dev.vars src/register.ts",
     "prod:register": "tsx --env-file=.env src/register.ts"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260723.1",
     "@types/node": "^26.1.1",
     "discord-api-types": "^0.38.50",
     "tsx": "^4.23.1",
