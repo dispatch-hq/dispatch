@@ -27,10 +27,7 @@
 
     /* Completeness */
     "skipLibCheck": true,
-    "types": [
-      "./worker-configuration.d.ts",
-      "node"
-    ]
+    "types": ["node"]
   },
   "exclude": [],
   "include": ["worker-configuration.d.ts", "src/**/*.ts"]
