@@ -1,4 +1,3 @@
-```markdown
 # Flash Discord Bot
 
 Serverless Discord bot built with TypeScript and `discord-hono`, hosted on Cloudflare Workers.
