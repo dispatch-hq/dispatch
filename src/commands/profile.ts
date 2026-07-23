@@ -16,7 +16,7 @@ export const command_profile = factory.command(
           components: [
             {
               type: 10, // Text Display
-              content: '# ⚡ Flash Bot Profile\nModern app interface running on Cloudflare Edge.'
+              content: '# ⚡ Dispatch Bot Profile\nModern app interface running on Cloudflare Edge.'
             },
             {
               type: 14, // Separator

@@ -23,7 +23,7 @@ The deployment is configured in `wrangler.json`:
 ```json
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "flash",
+  "name": "dispatch",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-22"
 }
