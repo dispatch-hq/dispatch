@@ -1,0 +1,6 @@
+# Everything in the repo requires your review
+* @jakemackie
+
+# Core infrastructure & deployment configs explicitly owned by you
+/wrangler.jsonc @jakemackie
+/db/ @jakemackie
