@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "dev:db": "wrangler d1 execute dispatch-db --local --file=schema.sql",
-    "prod:db": "wrangler d1 execute dispatch-db --remote --file=schema.sql",
+    "dev:db": "wrangler d1 execute dispatch-db --local --file=db/schema.sql",
+    "prod:db": "wrangler d1 execute dispatch-db --remote --file=db/schema.sql",
     "dev:register": "tsx --env-file=.dev.vars src/register.ts",
     "prod:register": "tsx --env-file=.env src/register.ts"
   },
