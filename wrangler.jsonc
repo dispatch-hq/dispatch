@@ -4,6 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-23",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "DISCORD_PUBLIC_KEY": "bc7c4172bab8726e81d0ebb8223b3b01acf09bb30c204738d346fd476ea620eb",
+    "DISCORD_APPLICATION_ID": "1530352178428907722"
+  },
   "observability": {
     "enabled": true
   },
