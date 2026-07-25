@@ -7,7 +7,7 @@
 
     /* Modules */
     "module": "es2022",
-    "moduleResolution": "Bundler",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
 
     /* JavaScript Support */
