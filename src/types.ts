@@ -9,7 +9,7 @@ export type Bindings = {
 
 export type Variables = {
   repo_url_input: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type AppEnv = {
@@ -18,3 +18,9 @@ export type AppEnv = {
 };
 
 export type App = DiscordHono<AppEnv>;
+
+export type GuildConfig = {
+  guild_id: string;
+  github_repo: string;
+  updated_at: string;
+};

@@ -17,12 +17,13 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260723.1",
     "@types/node": "^26.1.1",
-    "discord-api-types": "^0.38.50",
+    "discord-api-types": "^0.38.51",
     "tsx": "^4.23.1",
     "typescript": "^5.5.2",
     "wrangler": "^4.113.0"
   },
   "dependencies": {
+    "@discordjs/builders": "^1.14.1",
     "discord-hono": "^0.21.2"
   }
 }
