@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "dev:register": "tsx --env-file=.dev.vars src/register.ts",
+    "prod:register": "tsx --env-file=.env src/register.ts",
     "dev:db": "wrangler d1 execute dispatch-db --local --file=db/schema.sql",
     "prod:db": "wrangler d1 execute dispatch-db --remote --file=db/schema.sql",
-    "dev:register": "tsx --env-file=.dev.vars src/register.ts",
-    "prod:register": "tsx --env-file=.env src/register.ts"
+    "migrate:create": "wrangler d1 migrations create dispatch-db",
+    "dev:migrate": "wrangler d1 migrations apply dispatch-db --local",
+    "prod:migrate": "wrangler d1 migrations apply dispatch-db --remote"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260723.1",
