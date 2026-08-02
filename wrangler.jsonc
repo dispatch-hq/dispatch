@@ -31,9 +31,9 @@
 
 			"d1_databases": [
 				{
-				"binding": "dispatch_db_beta",
-				"database_name": "dispatch-db-beta",
-				"database_id": "779d2fec-b329-4053-97a7-8ae1b8f5ba88"
+					"binding": "dispatch_db_beta",
+					"database_name": "dispatch-db-beta",
+					"database_id": "779d2fec-b329-4053-97a7-8ae1b8f5ba88"
 				}
 			]
 		}
