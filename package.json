@@ -6,18 +6,13 @@
   "scripts": {
     "dev": "wrangler dev",
 
-    "dev:deploy": "wrangler deploy --env beta",
+    "beta:deploy": "wrangler deploy --env beta",
     "prod:deploy": "wrangler deploy",
 
-    "dev:register": "tsx --env-file=.dev.vars src/register.ts",
+    "beta:register": "tsx --env-file=.dev.vars src/register.ts",
     "prod:register": "tsx --env-file=.env src/register.ts",
 
-    "dev:db": "wrangler d1 execute dispatch-db --local --file=db/schema.sql",
-    "beta:db": "wrangler d1 execute dispatch-db-beta --remote --env beta --file=db/schema.sql",
-    "prod:db": "wrangler d1 execute dispatch-db --remote --file=db/schema.sql",
-
-    "migrate:create": "wrangler d1 migrations create dispatch-db",
-    "dev:migrate": "wrangler d1 migrations apply dispatch-db --local",
+    "beta:migrate": "wrangler d1 migrations apply dispatch-db-beta --remote --env beta",
     "prod:migrate": "wrangler d1 migrations apply dispatch-db --remote"
   },
   "devDependencies": {
