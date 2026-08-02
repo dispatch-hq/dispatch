@@ -1,1 +1,7 @@
--- Migration number: 0001 	 2026-07-25T00:05:43.155Z
+-- Migration number: 0001
+
+CREATE TABLE IF NOT EXISTS guild_configs (
+  guild_id TEXT PRIMARY KEY,
+  github_repo TEXT NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

@@ -1,5 +1,0 @@
-CREATE TABLE IF NOT EXISTS guild_configs (
-  guild_id TEXT PRIMARY KEY,
-  github_repo TEXT NOT NULL,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
