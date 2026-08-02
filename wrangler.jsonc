@@ -1,31 +1,47 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "dispatch",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-07-23",
-  "compatibility_flags": ["nodejs_compat"],
-  "vars": {
-    "DISCORD_PUBLIC_KEY": "bc7c4172bab8726e81d0ebb8223b3b01acf09bb30c204738d346fd476ea620eb",
-    "DISCORD_APPLICATION_ID": "1530352178428907722"
-  },
-  "env": {
-    "beta": {
-      "name": "dispatch-beta",
-      "vars": {
-        "DISCORD_APPLICATION_ID": "1530351387320385586",
-        "DISCORD_PUBLIC_KEY": "d9ba7f51340f9e0aef3ce7224f3ddce364ff9ce12d28521408361ab365fb9a03"
-      }
-    }
-  },
-  "observability": {
-    "enabled": true
-  },
-  "upload_source_maps": true,
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "dispatch-db",
-      "database_id": "164ae147-457c-4ae2-8aba-d6d2743a284d"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "dispatch",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-23",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+
+	"vars": {
+		"DISCORD_PUBLIC_KEY": "bc7c4172bab8726e81d0ebb8223b3b01acf09bb30c204738d346fd476ea620eb",
+		"DISCORD_APPLICATION_ID": "1530352178428907722"
+	},
+
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "dispatch-db",
+			"database_id": "164ae147-457c-4ae2-8aba-d6d2743a284d"
+		}
+	],
+
+	"env": {
+		"beta": {
+			"name": "dispatch-beta",
+
+			"vars": {
+				"DISCORD_APPLICATION_ID": "1530351387320385586",
+				"DISCORD_PUBLIC_KEY": "d9ba7f51340f9e0aef3ce7224f3ddce364ff9ce12d28521408361ab365fb9a03"
+			},
+
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "dispatch-db-beta",
+					"database_id": "655f8767-f6bf-4ab6-a8f5-22695c262500"
+				}
+			]
+		}
+	},
+
+	"observability": {
+		"enabled": true
+	},
+
+	"upload_source_maps": true
 }
