@@ -38,8 +38,8 @@ export const sub_setup = factory.subCommand(
           divider(),
           text(
             [
-              '**1. Install the Dispatch GitHub App** on the repository you want issues filed in. Skip this if it is already installed.',
-              '**2. Sign in with GitHub** so Dispatch can confirm you have write access, then pick the repository.',
+              '1️⃣ **Install the Dispatch GitHub App** on the repository you want issues filed in. Skip this if it is already installed.',
+              '2️⃣ **Sign in with GitHub** so Dispatch can confirm you have write access, then pick the repository.',
             ].join('\n')
           ),
           row(

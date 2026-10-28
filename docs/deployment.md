@@ -95,6 +95,22 @@ Discord and GitHub need a public URL to reach `wrangler dev`. Use a tunnel such 
 
 Most behaviour can be exercised without any of that: `npm test` runs the full flows in-process.
 
+## Troubleshooting
+
+Stream the Worker's logs while you test. Discord REST failures are logged as warnings rather than shown to users.
+
+```sh
+npx wrangler tail --env beta --format pretty
+```
+
+| Symptom | Cause |
+| --- | --- |
+| "I can't post in #channel" in `/dispatch settings` (`403 Missing Access`) | The bot can't see that channel, typically a private category. Give it *View Channel* and *Send Messages* there. |
+| Reporters never get DMs (`50278` / `50007` in the logs) | The member has DMs from server members turned off (*Server menu → Privacy Settings*). Dispatch skips the DM; updates-channel posts still work. |
+| Old commands (e.g. `/repository …`) still show up | Global commands left over from an earlier version. Run `npm run beta:register -- --clear-global` (needs `DISCORD_GUILD_ID`). |
+| A member picks another bot's `/leaderboard` or `/stats` | Command names aren't unique across bots. Discord shows the app name next to each command in the picker. |
+| Status doesn't change when an issue is closed | Check the GitHub App's *Advanced → Recent Deliveries*. A `401` there means `GITHUB_WEBHOOK_SECRET` doesn't match. |
+
 ## Limits worth knowing
 
 * **Attachments:** up to 3 per report, 10 MB each. Allowed types are images, mp4/webm/mov, txt/log/json. Anything else is skipped and the reporter is told.
