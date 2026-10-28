@@ -1,83 +1,102 @@
 # Deployment
 
-This project is a serverless Discord bot deployed using **Cloudflare Workers**.
+Dispatch is a single Cloudflare Worker. Discord and GitHub both reach it over HTTPS:
 
-## 🚀 How It Works
+| Route | Called by | Purpose |
+| --- | --- | --- |
+| `POST /interactions` | Discord | Slash commands, buttons, selects, modals (`POST /` also works) |
+| `GET /github/callback` | GitHub | OAuth / installation redirect while linking a repository |
+| `POST /github/link` | Admin's browser | Confirms the chosen repository |
+| `POST /github/webhook` | GitHub | Issue closed / reopened / commented, app uninstalled, repo renamed |
+| `GET /files/reports/*` | Anyone with the link | Attachments rehosted from Discord |
+| `GET /` | Anyone | Landing page with an *Add to Discord* link |
 
-Unlike static sites, this project does not compile to a `dist/` folder. Instead, Cloudflare’s CLI (`wrangler`) bundles the TypeScript source code directly and deploys it to Cloudflare’s global edge network as a lightweight HTTP endpoint:
+Below, `PUBLIC_URL` is the Worker's public origin, e.g. `https://dispatch.example.workers.dev`. Repeat each step for the **beta** environment (`--env beta`) if you use one.
 
-```text
-src/
-  ↓
-wrangler deploy (esbuild)
-  ↓
-Cloudflare Worker (Edge API)
-  ↑ (HTTP POST)
-Discord Interactions API
+## 1. Cloudflare resources
+
+```sh
+# D1 (already referenced in wrangler.jsonc)
+npx wrangler d1 create dispatch-db
+
+# R2 bucket for attachments
+npx wrangler r2 bucket create dispatch-files
+
+# Apply the schema
+npm run prod:migrate
 ```
 
-When users run slash commands in Discord, Discord sends an HTTP `POST` request directly to your Worker endpoint, which processes the request and responds instantly.
+Set `PUBLIC_URL` under `vars` in `wrangler.jsonc`.
 
-The deployment is configured in `wrangler.json`:
+## 2. Discord application
 
-```json
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "dispatch",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-07-22"
-}
-```
+In the [Developer Portal](https://discord.com/developers/applications):
 
-## 🔑 Environment Variables & Secrets
+1. Copy the **Application ID** and **Public Key** into `wrangler.jsonc` (`DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`).
+2. **Bot → Reset Token** and store it as the `DISCORD_TOKEN` secret (step 4). No privileged intents are needed.
+3. After the first deploy, set **Interactions Endpoint URL** to `PUBLIC_URL/interactions`.
+4. Invite the bot with the *Add to Discord* button on `PUBLIC_URL`. It asks for *View Channel*, *Send Messages*, *Embed Links* and *Manage Roles*.
 
-This bot relies on three key Discord credentials:
+> For reward roles, Dispatch's own role must sit **above** every reward role in *Server Settings → Roles*. Otherwise Discord refuses the assignment, and `/dispatch rewards add` tells you so.
 
-| Variable | Description |
+## 3. GitHub App
+
+Create one at **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**. Use an organization's settings if the org should own it.
+
+| Setting | Value |
 | --- | --- |
-| `DISCORD_APPLICATION_ID` | Your Discord Application Client ID |
-| `DISCORD_PUBLIC_KEY` | Used by the Worker to verify incoming HTTP signatures |
-| `DISCORD_TOKEN` | Used by `npm run register` to sync slash commands |
+| Homepage URL | `PUBLIC_URL` |
+| Callback URL | `PUBLIC_URL/github/callback` |
+| Request user authorization (OAuth) during installation | ✅ Enabled — admins land straight on the repo picker after installing |
+| Webhook → Active | ✅ |
+| Webhook URL | `PUBLIC_URL/github/webhook` |
+| Webhook secret | a long random string → `GITHUB_WEBHOOK_SECRET` |
+| Repository permissions | **Issues: Read and write** · Metadata: Read-only |
+| Subscribe to events | **Issues**, **Issue comment**, **Repository** |
+| Where can this app be installed? | Any account |
 
-### Local Development
+After creating it:
 
-Store these in a local `.env` file (never commit this file):
+* Copy the **App ID**, **Client ID** and the app's **slug** (the last part of its public URL, `github.com/apps/<slug>`) into `wrangler.jsonc` (`GITHUB_APP_ID`, `GITHUB_CLIENT_ID`, `GITHUB_APP_SLUG`).
+* **Generate a new client secret** → `GITHUB_CLIENT_SECRET`.
+* **Generate a private key** (downloads a `.pem`) → `GITHUB_PRIVATE_KEY`. Both PKCS#1 and PKCS#8 keys work.
 
-```ini
-DISCORD_APPLICATION_ID="your_app_id"
-DISCORD_PUBLIC_KEY="your_public_key"
-DISCORD_TOKEN="your_bot_token"
-```
-
-### Production Secrets
-
-For production, upload your credentials securely to Cloudflare using Wrangler:
+## 4. Secrets
 
 ```sh
-npx wrangler secret put DISCORD_APPLICATION_ID
-npx wrangler secret put DISCORD_PUBLIC_KEY
 npx wrangler secret put DISCORD_TOKEN
+npx wrangler secret put GITHUB_CLIENT_SECRET
+npx wrangler secret put GITHUB_WEBHOOK_SECRET
+npx wrangler secret put STATE_SECRET            # any long random string
+npx wrangler secret put GITHUB_PRIVATE_KEY < dispatch.private-key.pem
 ```
 
-If deploying via CI/CD, set `CLOUDFLARE_API_TOKEN` in your pipeline environment variables.
+`STATE_SECRET` signs the short-lived links used while connecting a repository. Rotating it only invalidates links currently in flight.
 
-## 🧞 Deployment Steps
+## 5. Deploy and register commands
 
-1. **Register Slash Commands** (Run once or whenever command signatures change):
 ```sh
-npm run register
+npm run check           # typecheck + tests
+npm run prod:deploy
+npm run prod:register   # reads DISCORD_APPLICATION_ID / DISCORD_TOKEN from .env
 ```
 
+Re-run `prod:register` whenever command definitions change. While developing, set `DISCORD_GUILD_ID` in `.dev.vars` and run `npm run beta:register` to register to one server instantly.
 
-2. **Deploy the Worker**:
+## Local development
+
 ```sh
-npm run deploy
+cp .dev.vars.example .dev.vars   # fill in your beta app's credentials
+npm run dev:migrate
+npm run dev
 ```
 
+Discord and GitHub need a public URL to reach `wrangler dev`. Use a tunnel such as `cloudflared tunnel --url http://localhost:8787`, and point your beta app's endpoints and `PUBLIC_URL` at it.
 
-3. **Configure Discord interactions**:
-Copy your live `*.workers.dev` URL and paste it into the **Interactions Endpoint URL** field under your Application settings in the [Discord Developer Portal](https://discord.com/developers/applications).
+Most behaviour can be exercised without any of that: `npm test` runs the full flows in-process.
 
-## 👀 Want to learn more?
+## Limits worth knowing
 
-Check out the [Cloudflare Workers documentation](https://developers.cloudflare.com/workers/) and [discord-hono guide](https://discord-hono.luis.fun).
+* **Attachments:** up to 3 per report, 10 MB each. Allowed types are images, mp4/webm/mov, txt/log/json. Anything else is skipped and the reporter is told.
+* **Reward backfill:** adding a tier immediately grants it to up to 20 members who already qualify. That keeps it under the Workers free-plan subrequest limit. Everyone else gets it the next time one of their reports is fixed.
+* **Privacy:** issues include the reporter's Discord username and, for message reports, a link to the message. Rehosted attachments are public to anyone with the link.

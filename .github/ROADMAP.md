@@ -2,6 +2,8 @@
 
 > Dispatch turns Discord messages into structured, actionable bug reports and issues on platforms such as GitHub, GitLab, Bitbucket, and more.
 
+✅ done · 🟡 partial · ⬜ not started
+
 ---
 
 ## 🚀 MVP
@@ -12,122 +14,91 @@ The goal of the MVP is to make the core workflow reliable:
 
 ### Core Workflow
 
-| Feature                                      | Status |
-| -------------------------------------------- | ------ |
-| Receive bug reports from Discord             | ⬜      |
-| Convert messages into structured bug reports | ⬜      |
-| Create issues on GitHub                      | ⬜      |
-| Link the created issue back to Discord       | ⬜      |
-| Handle issue creation failures gracefully    | ⬜      |
-| Prevent duplicate or accidental submissions  | ⬜      |
-| Configure repositories per Discord server    | ⬜      |
-| Basic permission and access control          | ⬜      |
-| Securely store required configuration        | ⬜      |
+| Feature                                      | Status | Notes |
+| -------------------------------------------- | ------ | ----- |
+| Receive bug reports from Discord             | ✅      | `/report` and the *Report bug* message command |
+| Convert messages into structured bug reports | ✅      | Title, description, steps, environment, attachments |
+| Create issues on GitHub                      | ✅      | GitHub App with per-repo installation tokens |
+| Link the created issue back to Discord       | ✅      | Receipt with a *View issue* button; triage card updates |
+| Handle issue creation failures gracefully    | ✅      | Clear errors; triage reports return to the queue |
+| Prevent duplicate or accidental submissions  | 🟡      | Per-member cooldown and atomic triage claims. No duplicate detection yet |
+| Configure repositories per Discord server    | ✅      | `/dispatch setup` |
+| Basic permission and access control          | ✅      | Manage Server for admin commands, staff role for triage, OAuth-verified repo access |
+| Securely store required configuration        | ✅      | Secrets in Workers secrets; no user tokens stored |
 
-### MVP Progress
-
-**Core MVP: `0%`**
-
-The MVP is complete when a user can submit a bug report through Discord and Dispatch can reliably create and reference the corresponding issue on GitHub.
+**Core MVP: `95%`**
 
 ---
 
 ## 🧩 Bug Report Quality
 
-Improve the quality and usefulness of reports submitted through Dispatch.
-
-| Feature                               | Status |
-| ------------------------------------- | ------ |
-| Structured bug report format          | ⬜      |
-| Required fields for reports           | ⬜      |
-| Reproduction steps                    | ⬜      |
-| Environment and version information   | ⬜      |
-| Attachments and screenshots           | ⬜      |
-| Report review / approval workflow     | ⬜      |
-| Report status synchronisation         | ⬜      |
-| Update Discord when an issue is fixed | ⬜      |
+| Feature                               | Status | Notes |
+| ------------------------------------- | ------ | ----- |
+| Structured bug report format          | ✅      | |
+| Required fields for reports           | ✅      | Title and description |
+| Reproduction steps                    | ✅      | |
+| Environment and version information   | ✅      | |
+| Attachments and screenshots           | ✅      | Rehosted to R2 so links don't expire |
+| Report review / approval workflow     | ✅      | Optional triage channel |
+| Report status synchronisation         | ✅      | Closed / reopened via webhooks |
+| Update Discord when an issue is fixed | ✅      | Reporter DM + optional updates channel |
 
 ---
 
 ## 🏆 Community Rewards
 
-Reward users who consistently submit valuable bug reports.
-
-| Feature                                             | Status |
-| --------------------------------------------------- | ------ |
-| Track accepted bug reports                          | ⬜      |
-| Track fixed bug reports                             | ⬜      |
-| Configurable reward thresholds                      | ⬜      |
-| Automatically assign Discord roles                  | ⬜      |
-| Example: 5 accepted and fixed reports → reward role | ⬜      |
-| Configurable milestones and roles                   | ⬜      |
+| Feature                                             | Status | Notes |
+| --------------------------------------------------- | ------ | ----- |
+| Track accepted bug reports                          | ✅      | |
+| Track fixed bug reports                             | ✅      | Closed as *completed* |
+| Configurable reward thresholds                      | ✅      | `/dispatch rewards add` |
+| Automatically assign Discord roles                  | ✅      | Revoked if the issue is reopened |
+| Example: 5 accepted and fixed reports → reward role | ✅      | |
+| Configurable milestones and roles                   | ✅      | Multiple tiers per server |
 
 ---
 
 ## 🔌 Repository Integrations
 
-Expand beyond GitHub.
-
 | Platform                   | Status |
 | -------------------------- | ------ |
-| GitHub                     | 🟡 MVP |
+| GitHub                     | ✅      |
 | GitLab                     | ⬜      |
 | Bitbucket                  | ⬜      |
 | Other repository platforms | ⬜      |
 
-Dispatch should support multiple providers through a common integration system, allowing additional platforms to be added without redesigning the core bot.
+The core talks to code hosts only through `IssueProvider` (`src/providers/types.ts`), and every link and report records its provider. See the README for what a new provider needs.
 
 ---
 
 ## 🛠️ Discord Commands
 
-Commands should be measured by how much of the core workflow they enable, rather than tracked as an enormous list of individual commands.
-
-### Command Coverage
-
 | Area                  | Progress |
 | --------------------- | -------: |
-| Configuration         |     `0%` |
-| Repository management |     `0%` |
-| Bug report submission |     `0%` |
-| Report review         |     `0%` |
-| Issue management      |     `0%` |
-| User rewards          |     `0%` |
-| Administration        |     `0%` |
-
-**MVP command coverage: `0%`**
-
-The MVP is complete when users and administrators can complete the entire bug-report workflow without manual intervention.
+| Configuration         |   `100%` |
+| Repository management |   `100%` |
+| Bug report submission |   `100%` |
+| Report review         |   `100%` |
+| Issue management      |    `50%` |
+| User rewards          |   `100%` |
+| Administration        |    `75%` |
 
 ---
+
+## 🧱 Next up
+
+* Duplicate detection: search open issues for similar titles before filing
+* Per-server report templates (custom fields, e.g. "Game version")
+* Let reporters add follow-up comments or screenshots to their issue from Discord
+* Thread per report in the triage channel for staff discussion
+* Label picker in the report form (bug / crash / UI…)
+* GitLab provider
+* Public contributor leaderboard page
 
 ## 🧱 Future Improvements
 
-Ideas that are not required for the initial release but may become valuable later.
-
-* Automatic duplicate detection
-* AI-assisted bug report structuring
-* AI-assisted duplicate detection
+* AI-assisted bug report structuring and duplicate detection
 * Automatic categorisation and labelling
-* Custom report templates
-* Per-server workflows
-* Advanced issue synchronisation
-* Public contributor leaderboards
-* Advanced reward systems
 * Organisation-wide configuration
 * Self-hosting improvements
-* Additional project management integrations
-
----
-
-## 📊 Overall Progress
-
-| Area                     | Progress |
-| ------------------------ | -------: |
-| Core MVP                 |     `0%` |
-| Bug Report Quality       |     `0%` |
-| Community Rewards        |     `0%` |
-| Repository Integrations  |     `0%` |
-| Discord Command Coverage |     `0%` |
-
-> Progress should reflect completed user-facing capabilities rather than the number of internal tasks or commands implemented.
+* Additional project management integrations (Linear, Jira)
