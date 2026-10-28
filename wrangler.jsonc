@@ -7,9 +7,16 @@
 		"nodejs_compat"
 	],
 
+	// Non-secret configuration. Secrets (DISCORD_TOKEN, GITHUB_CLIENT_SECRET,
+	// GITHUB_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET, STATE_SECRET) are set with
+	// `wrangler secret put` — see docs/deployment.md.
 	"vars": {
+		"PUBLIC_URL": "https://dispatch.example.workers.dev",
 		"DISCORD_PUBLIC_KEY": "bc7c4172bab8726e81d0ebb8223b3b01acf09bb30c204738d346fd476ea620eb",
-		"DISCORD_APPLICATION_ID": "1530352178428907722"
+		"DISCORD_APPLICATION_ID": "1530352178428907722",
+		"GITHUB_APP_ID": "",
+		"GITHUB_APP_SLUG": "",
+		"GITHUB_CLIENT_ID": ""
 	},
 
 	"d1_databases": [
@@ -20,13 +27,24 @@
 		}
 	],
 
+	"r2_buckets": [
+		{
+			"binding": "FILES",
+			"bucket_name": "dispatch-files"
+		}
+	],
+
 	"env": {
 		"beta": {
 			"name": "dispatch-beta",
 
 			"vars": {
+				"PUBLIC_URL": "https://dispatch-beta.example.workers.dev",
 				"DISCORD_APPLICATION_ID": "1530351387320385586",
-				"DISCORD_PUBLIC_KEY": "d9ba7f51340f9e0aef3ce7224f3ddce364ff9ce12d28521408361ab365fb9a03"
+				"DISCORD_PUBLIC_KEY": "d9ba7f51340f9e0aef3ce7224f3ddce364ff9ce12d28521408361ab365fb9a03",
+				"GITHUB_APP_ID": "",
+				"GITHUB_APP_SLUG": "",
+				"GITHUB_CLIENT_ID": ""
 			},
 
 			"d1_databases": [
@@ -34,6 +52,13 @@
 					"binding": "DB",
 					"database_name": "dispatch-db-beta",
 					"database_id": "779d2fec-b329-4053-97a7-8ae1b8f5ba88"
+				}
+			],
+
+			"r2_buckets": [
+				{
+					"binding": "FILES",
+					"bucket_name": "dispatch-files-beta"
 				}
 			]
 		}

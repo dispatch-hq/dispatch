@@ -1,0 +1,15 @@
+# Local / beta secrets. Copy to .dev.vars (git-ignored).
+# Non-secret values (app ids, PUBLIC_URL) live in wrangler.jsonc and can be
+# overridden here too.
+
+DISCORD_TOKEN=
+GITHUB_CLIENT_SECRET=
+GITHUB_WEBHOOK_SECRET=
+STATE_SECRET=
+# Paste the PEM on one line with literal \n between lines, or wrap in quotes.
+GITHUB_PRIVATE_KEY=
+
+# Used by `npm run beta:register`
+DISCORD_APPLICATION_ID=
+# Optional: register commands to one server for instant updates
+DISCORD_GUILD_ID=
