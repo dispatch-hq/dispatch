@@ -1,6 +1,6 @@
 import { makeIntegerOption, makeRoleOption, makeSubCommand, makeSubCommandGroup } from 'discord-hono';
 import { deleteRewardTier, getQualifiedReporters, getRewardTiers, upsertRewardTier } from '../../db';
-import { card, colors, EPHEMERAL_V2, notice, text, view } from '../../lib/ui';
+import { card, divider, EPHEMERAL_V2, notice, text, view } from '../../lib/ui';
 import { factory } from '../../init';
 import { syncRewards } from '../../services/rewards';
 import { deny, guarded, inGuild, messages, reply } from '../shared';
@@ -41,14 +41,14 @@ const sub_add = factory.subCommand(
         }
 
         const lines = [
-          `### 🏆 Reward saved\nMembers get <@&${roleId}> once **${threshold}** of their reports are fixed.`,
+          `### Reward saved\nMembers get <@&${roleId}> once **${threshold}** of their reports are fixed.`,
           granted > 0 ? `Granted it to **${granted}** member(s) who already qualify.` : null,
           qualified.length === BACKFILL_LIMIT
             ? `-# Others who already qualify will receive it the next time one of their reports is fixed.`
             : null,
-          blocked ? `⚠️ I couldn't assign the role. ${ROLE_HELP}` : null,
+          blocked ? `I couldn't assign the role. ${ROLE_HELP}` : null,
         ];
-        await c.followup(view([notice(lines.filter(Boolean).join('\n'), blocked ? colors.warning : colors.success)]));
+        await c.followup(view([notice(lines.filter(Boolean).join('\n'))]));
       })
     );
   }
@@ -64,7 +64,7 @@ const sub_remove = factory.subCommand(
 
     const removed = await deleteRewardTier(c.env.DB, ctx.guildId, c.var.role);
     return removed
-      ? reply(c, `<@&${c.var.role}> is no longer a reward. Members who already have it keep it.`, colors.muted)
+      ? reply(c, `<@&${c.var.role}> is no longer a reward. Members who already have it keep it.`)
       : deny(c, `<@&${c.var.role}> isn't a reward role.`);
   }
 );
@@ -81,7 +81,9 @@ const sub_list = factory.subCommand(makeSubCommand('list', 'Show reward roles'),
   return c.flags(...EPHEMERAL_V2).res(
     view([
       card([
-        text(`## 🏆 Reward roles\n${body}`),
+        text('## Reward roles'),
+        text(body),
+        divider(),
         text(`-# A report counts once its issue is closed as **completed**. Reopening it takes the credit back. ${ROLE_HELP}`),
       ]),
     ])

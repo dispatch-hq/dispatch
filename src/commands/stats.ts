@@ -7,18 +7,18 @@ import { issueRef } from '../services/reports';
 import type { ReportRow } from '../types';
 import { deny, inGuild, messages } from './shared';
 
-const STATUS_ICON: Record<ReportRow['status'], string> = {
-  pending: '⏳',
-  rejected: '✖️',
-  open: '🟢',
-  fixed: '🎉',
-  closed: '🔒',
+const STATUS_LABEL: Record<ReportRow['status'], string> = {
+  pending: 'Awaiting review',
+  rejected: 'Rejected',
+  open: 'Open',
+  fixed: 'Fixed',
+  closed: 'Closed',
 };
 
 function reportLine(report: ReportRow): string {
   const title = escapeMarkdown(truncate(report.title, 70));
   const ref = report.issue_url ? ` · [${issueRef(report)}](${report.issue_url})` : '';
-  return `${STATUS_ICON[report.status]} ${title}${ref}`;
+  return `${title}${ref}\n-# ${STATUS_LABEL[report.status]}`;
 }
 
 export const command_stats = factory.command(
@@ -50,7 +50,9 @@ export const command_stats = factory.command(
     return c.flags(...EPHEMERAL_V2).res(
       view([
         card([
-          text(`## 📊 Bug reports · <@${userId}>\n${summary.filter(Boolean).join('\n')}`),
+          text(`## Bug reports\n<@${userId}>`),
+          divider(),
+          text(summary.filter(Boolean).join('\n')),
           recent.length > 0 && divider(),
           recent.length > 0 && text(`### Recent\n${recent.map(reportLine).join('\n')}`),
           stats.total === 0 && text('No reports yet — found a bug? Use `/report`.'),
@@ -60,8 +62,6 @@ export const command_stats = factory.command(
   }
 );
 
-const MEDALS = ['🥇', '🥈', '🥉'];
-
 export const command_leaderboard = factory.command(
   makeSlashCommand('leaderboard', 'Top bug reporters in this server').contexts([0]).integration_types([0]),
   async (c) => {
@@ -70,9 +70,9 @@ export const command_leaderboard = factory.command(
 
     const rows = await getLeaderboard(c.env.DB, ctx.guildId);
     const body = rows.length
-      ? rows.map((r, i) => `${MEDALS[i] ?? `**${i + 1}.**`} <@${r.reporter_id}> — **${r.fixed}** fixed`).join('\n')
+      ? rows.map((r, i) => `**${i + 1}.** <@${r.reporter_id}> — **${r.fixed}** fixed`).join('\n')
       : 'No fixed reports yet. Be the first — use `/report`!';
 
-    return c.flags(...PUBLIC_V2).res(view([card([text(`## 🏆 Top bug reporters\n${body}`)])]));
+    return c.flags(...PUBLIC_V2).res(view([card([text('## Top bug reporters'), divider(), text(body)])]));
   }
 );

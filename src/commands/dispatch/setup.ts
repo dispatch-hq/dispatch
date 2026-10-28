@@ -1,7 +1,7 @@
 import { makeLinkButton, makeSubCommand } from 'discord-hono';
 import { getGuild, isLinked } from '../../db';
 import { signToken } from '../../lib/crypto';
-import { card, colors, divider, EPHEMERAL_V2, row, text, view } from '../../lib/ui';
+import { card, divider, EPHEMERAL_V2, section, text, view } from '../../lib/ui';
 import { factory } from '../../init';
 import { getProvider } from '../../providers';
 import { githubAuthorizeUrl, githubInstallUrl } from '../../providers/github';
@@ -27,25 +27,27 @@ export const sub_setup = factory.subCommand(
       signToken<LinkState>(c.env.STATE_SECRET, { g: ctx.guildId, u: ctx.member.user.id }, LINK_TTL_SECONDS),
     ]);
 
-    const current = isLinked(guild)
-      ? `Currently linked to **[${guild.repo_full_name}](${getProvider(guild.provider).repoUrl(guild.repo_full_name)})**. Connecting another repository replaces it.`
-      : 'Members will be able to file bug reports with `/report`, or by right-clicking a message → **Apps → Report bug**.';
 
     return c.flags(...EPHEMERAL_V2).res(
       view([
         card([
-          text(`## 🔗 Connect a repository\n${current}`),
+          text('## Connect a repository'),
+          isLinked(guild)
+            ? section(
+                `Linked to **${guild.repo_full_name}**. Connecting another repository replaces it.`,
+                makeLinkButton(getProvider(guild.provider).repoUrl(guild.repo_full_name), 'Open')
+              )
+            : text('Members will be able to file bug reports with `/report`, or by right-clicking a message → **Apps → Report bug**.'),
           divider(),
-          text(
-            [
-              '1️⃣ **Install the Dispatch GitHub App** on the repository you want issues filed in. Skip this if it is already installed.',
-              '2️⃣ **Sign in with GitHub** so Dispatch can confirm you have write access, then pick the repository.',
-            ].join('\n')
+          section(
+            '**1. Install** the Dispatch GitHub App on the repository. Skip this if it is already installed.',
+            makeLinkButton(githubInstallUrl(c.env, state), 'Install')
           ),
-          row(
-            makeLinkButton(githubInstallUrl(c.env, state), ['📦', 'Install GitHub App']),
-            makeLinkButton(githubAuthorizeUrl(c.env, state), ['🔑', 'Sign in with GitHub'])
+          section(
+            '**2. Sign in** so Dispatch can confirm you have write access, then pick the repository.',
+            makeLinkButton(githubAuthorizeUrl(c.env, state), 'Sign in')
           ),
+          divider(),
           text('-# These links are tied to you and this server, and expire in 15 minutes.'),
         ]),
       ])

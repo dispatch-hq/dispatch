@@ -3,7 +3,7 @@ import type { LinkState } from '../commands/dispatch/setup';
 import { LINK_TTL_SECONDS } from '../commands/dispatch/setup';
 import { linkRepository } from '../db';
 import { signToken, verifyGitHubSignature, verifyToken } from '../lib/crypto';
-import { colors, notice } from '../lib/ui';
+import { notice } from '../lib/ui';
 import { ProviderError } from '../providers';
 import { exchangeOAuthCode, githubAuthorizeUrl, githubInstallUrl, listWritableRepos } from '../providers/github';
 import { sendDirectMessage } from '../services/discord';
@@ -94,8 +94,7 @@ githubRoutes.post('/link', async (c) => {
   c.executionCtx.waitUntil(
     sendDirectMessage(c.env, grant.u, [
       notice(
-        `### ✅ Repository connected\nBug reports from your server will now be filed in **[${grant.n}](https://github.com/${grant.n})**.\nNext: \`/dispatch settings\` to add a triage queue or updates channel, and \`/dispatch rewards add\` to reward great reporters.`,
-        colors.success
+        `### Repository connected\nBug reports from your server will now be filed in **[${grant.n}](https://github.com/${grant.n})**.\nNext: \`/dispatch settings\` to add a triage queue or updates channel, and \`/dispatch rewards add\` to reward great reporters.`
       ),
     ])
   );

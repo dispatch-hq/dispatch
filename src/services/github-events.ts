@@ -7,7 +7,7 @@ import {
   unlinkByInstallation,
 } from '../db';
 import { escapeMarkdown, truncate } from '../lib/format';
-import { card, colors, row, text } from '../lib/ui';
+import { card, divider, row, text } from '../lib/ui';
 import type { Bindings, ReportRow, ReportStatus } from '../types';
 import { sendDirectMessage } from './discord';
 import { announce, issueRef } from './reports';
@@ -118,16 +118,15 @@ async function onIssueComment(env: Bindings, event: IssueCommentEvent) {
       .join('\n');
 
     await sendDirectMessage(env, report.reporter_id, [
-      card(
-        [
-          text(
-            `### 💬 New reply on ${issueRef({ ...report, repo_full_name: event.repository.full_name })}\n` +
-              `**${escapeMarkdown(comment.user.login)}** commented on your report **${escapeMarkdown(truncate(report.title, 100))}**:\n${excerpt}`
-          ),
-          row(makeLinkButton(comment.html_url, 'View on GitHub')),
-        ],
-        colors.brand
-      ),
+      card([
+        text(
+          `### New reply on ${issueRef({ ...report, repo_full_name: event.repository.full_name })}\n` +
+            `**${escapeMarkdown(comment.user.login)}** commented on your report **${escapeMarkdown(truncate(report.title, 100))}**`
+        ),
+        divider(),
+        text(excerpt),
+        row(makeLinkButton(comment.html_url, 'View on GitHub')),
+      ]),
     ]);
   }
 }

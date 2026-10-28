@@ -5,6 +5,7 @@ import {
   makeButton,
   makeChannelSelect,
   makeLabel,
+  makeLinkButton,
   makeModal,
   makeRoleSelect,
   makeSubCommand,
@@ -13,7 +14,7 @@ import {
 import { getGuild, isLinked, updateSettings, type GuildSettings } from '../../db';
 import { escapeMarkdown, parseLabels } from '../../lib/format';
 import { canManageGuild } from '../../lib/permissions';
-import { card, colors, divider, EPHEMERAL_V2, notice, row, text, view } from '../../lib/ui';
+import { card, divider, EPHEMERAL_V2, notice, row, section, text, view } from '../../lib/ui';
 import { factory } from '../../init';
 import { getProvider } from '../../providers';
 import { sendChannelMessage } from '../../services/discord';
@@ -46,8 +47,11 @@ function channelSelect(
 function settingsPanel(guild: GuildRow | null, warning?: string) {
   const settings = { ...DEFAULTS, ...guild };
   const repo = isLinked(guild)
-    ? `**[${guild.repo_full_name}](${getProvider(guild.provider).repoUrl(guild.repo_full_name)})**`
-    : '*Not connected* — run `/dispatch setup`';
+    ? section(
+        `Repository **${guild.repo_full_name}**`,
+        makeLinkButton(getProvider(guild.provider).repoUrl(guild.repo_full_name), 'Open')
+      )
+    : text('Repository *not connected* — run `/dispatch setup`');
 
   // Discord keeps a select's local value across message edits when the
   // custom_id is unchanged, so re-picking the same channel after a failed save
@@ -61,8 +65,9 @@ function settingsPanel(guild: GuildRow | null, warning?: string) {
   const labels = parseLabels(settings.labels);
 
   return card([
-    text(`## ⚙️ Dispatch settings\nRepository: ${repo}`),
-    warning ? text(`⚠️ ${warning}`) : null,
+    text('## Settings'),
+    repo,
+    warning ? text(`**${warning}**`) : null,
     divider(),
     text('### Triage queue\nNew reports wait here for staff approval before reaching the repository. Leave empty to file issues immediately.'),
     row(channelSelect('settings-triage', settings.triage_channel_id ?? null, 'Off — file issues immediately', render)),
@@ -83,10 +88,10 @@ function settingsPanel(guild: GuildRow | null, warning?: string) {
       ].join('\n')
     ),
     row(
-      makeButton('settings-edit', ['✏️', 'Edit labels & cooldown'], buttonStyle.Secondary),
+      makeButton('settings-edit', 'Edit labels & cooldown', buttonStyle.Secondary),
       makeButton(
         'settings-dm',
-        settings.dm_reporters ? ['🔕', 'Turn off reporter DMs'] : ['🔔', 'Turn on reporter DMs'],
+        settings.dm_reporters ? 'Turn off reporter DMs' : 'Turn on reporter DMs',
         buttonStyle.Secondary
       )
     ),
@@ -109,7 +114,7 @@ function settingsModal(guild: GuildRow | null) {
 
 /** Confirms the bot can post in a channel by announcing its new role there. */
 async function claimChannel(env: Bindings, channelId: string, purpose: string): Promise<boolean> {
-  const id = await sendChannelMessage(env, channelId, [notice(`📌 This channel is now Dispatch's **${purpose}**.`, colors.brand)]);
+  const id = await sendChannelMessage(env, channelId, [notice(`This channel is now Dispatch's **${purpose}**.`)]);
   return id !== null;
 }
 

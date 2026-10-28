@@ -10,7 +10,7 @@ import {
 } from 'discord-hono';
 import { getLinkedGuild, secondsSinceLastReport } from '../db';
 import { clean, messageUrl, truncate } from '../lib/format';
-import { EPHEMERAL_V2, colors, notice, view } from '../lib/ui';
+import { EPHEMERAL_V2, notice, view } from '../lib/ui';
 import { factory } from '../init';
 import { rehostAttachments } from '../services/attachments';
 import { receiptCard, submitReport } from '../services/reports';
@@ -120,10 +120,10 @@ export const modal_report = factory.modal(reportModal(), (c) =>
   c.flags(...EPHEMERAL_V2).resDefer(
     guarded(async (c) => {
       const ctx = inGuild(c.interaction);
-      if (!ctx) return c.followup(view([notice(messages.guildOnly, colors.danger)]));
+      if (!ctx) return c.followup(view([notice(messages.guildOnly)]));
 
       const check = await canReport(c.env, ctx.guildId, ctx.member.user.id);
-      if ('error' in check) return c.followup(view([notice(check.error, colors.danger)]));
+      if ('error' in check) return c.followup(view([notice(check.error)]));
 
       const uploads = (c.var.files ?? [])
         .map((id) => c.ref.attachments?.[id])
@@ -146,7 +146,7 @@ export const modal_report = factory.modal(reportModal(), (c) =>
       });
 
       if (outcome.kind === 'failed') {
-        return c.followup(view([notice(`### Couldn't file your report\n${outcome.error}`, colors.danger)]));
+        return c.followup(view([notice(`### Couldn't file your report\n${outcome.error}`)]));
       }
       return c.followup(
         view([receiptCard(outcome.report, outcome.kind, outcome.kind === 'published' ? outcome.issue : null, skipped)])

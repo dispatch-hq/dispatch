@@ -1,5 +1,5 @@
 import { getReporterStats, getRewardTiers } from '../db';
-import { notice, colors } from '../lib/ui';
+import { notice } from '../lib/ui';
 import type { Bindings, GuildRow, RewardTier } from '../types';
 import { getMemberRoles, sendChannelMessage, sendDirectMessage, setMemberRole, type RoleChangeError } from './discord';
 
@@ -58,7 +58,7 @@ export async function announceRewards(env: Bindings, guild: GuildRow, userId: st
       sendChannelMessage(
         env,
         guild.updates_channel_id,
-        [notice(`🏆 <@${userId}> earned ${roles} for **${sync.fixed}** fixed bug reports!`, colors.success)],
+        [notice(`<@${userId}> earned ${roles} for **${sync.fixed}** fixed bug reports.`)],
         [userId]
       )
     );
@@ -66,7 +66,7 @@ export async function announceRewards(env: Bindings, guild: GuildRow, userId: st
   if (guild.dm_reporters) {
     tasks.push(
       sendDirectMessage(env, userId, [
-        notice(`### 🏆 New reward unlocked\nYou've had **${sync.fixed}** bug reports fixed and earned a new role. Thank you!`, colors.success),
+        notice(`### New reward unlocked\nYou've had **${sync.fixed}** bug reports fixed and earned a new role. Thank you!`),
       ])
     );
   }

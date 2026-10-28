@@ -1,5 +1,5 @@
 import type { APIInteractionGuildMember } from 'discord-api-types/v10';
-import { colors, EPHEMERAL_V2, notice, view } from '../lib/ui';
+import { EPHEMERAL_V2, notice, view } from '../lib/ui';
 
 type Flag = (typeof EPHEMERAL_V2)[number];
 
@@ -24,12 +24,12 @@ export function inGuild(interaction: GuildInteraction) {
     : null;
 }
 
-export function reply(c: Responder, message: string, accent: number = colors.muted): Response {
-  return c.flags(...EPHEMERAL_V2).res(view([notice(message, accent)]));
+export function reply(c: Responder, message: string): Response {
+  return c.flags(...EPHEMERAL_V2).res(view([notice(message)]));
 }
 
 export function deny(c: Responder, message: string): Response {
-  return reply(c, message, colors.danger);
+  return reply(c, message);
 }
 
 export const messages = {
@@ -51,7 +51,7 @@ export function guarded<C extends Followup>(work: (c: C) => Promise<unknown>) {
       await work(c);
     } catch (error) {
       console.error('interaction failed', error);
-      await c.followup(view([notice(messages.failed, colors.danger)])).catch(() => {});
+      await c.followup(view([notice(messages.failed)])).catch(() => {});
     }
   };
 }

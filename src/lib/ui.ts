@@ -1,19 +1,13 @@
 import type { APIActionRowComponent, APIComponentInMessageActionRow } from 'discord-api-types/v10';
 import {
   makeContainer,
+  makeSection,
   makeSeparator,
   makeTextDisplay,
   messageFlags,
 } from 'discord-hono';
 
-/** Shared look & feel for every Components V2 message Dispatch sends. */
-export const colors = {
-  brand: 0x5865f2,
-  success: 0x57f287,
-  warning: 0xfee75c,
-  danger: 0xed4245,
-  muted: 0x4f545c,
-} as const;
+/** Shared look & feel for every Components V2 message Dispatch sends: uncoloured containers, plain text, buttons. */
 
 export const EPHEMERAL_V2 = ['EPHEMERAL', 'IS_COMPONENTS_V2'] as const;
 export const PUBLIC_V2 = ['IS_COMPONENTS_V2'] as const;
@@ -29,13 +23,17 @@ export const row = (...items: RowItem[]): APIActionRowComponent<APIComponentInMe
   components: items.map((item) => ('toJSON' in item ? item.toJSON() : item)),
 });
 
-export function card(blocks: (Block | null | undefined | false)[], accent: number = colors.brand): Container {
-  return makeContainer(blocks.filter((b): b is Block => !!b)).accent_color(accent);
+/** Text with a single button (usually a link) pinned to its right. */
+export const section = (content: string, accessory: Parameters<typeof makeSection>[1]) =>
+  makeSection([makeTextDisplay(content)], accessory);
+
+export function card(blocks: (Block | null | undefined | false)[]): Container {
+  return makeContainer(blocks.filter((b): b is Block => !!b));
 }
 
 /** Single-paragraph card — the default shape for confirmations and errors. */
-export function notice(content: string, accent: number = colors.muted): Container {
-  return card([text(content)], accent);
+export function notice(content: string): Container {
+  return card([text(content)]);
 }
 
 /**
