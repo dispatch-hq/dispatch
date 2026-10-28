@@ -28,8 +28,14 @@ const DEFAULTS: Pick<GuildRow, 'dm_reporters' | 'labels' | 'cooldown_seconds'> =
   cooldown_seconds: 60,
 };
 
-function channelSelect(id: 'settings-triage' | 'settings-updates', current: string | null, placeholder: string) {
+function channelSelect(
+  id: 'settings-triage' | 'settings-updates',
+  current: string | null,
+  placeholder: string,
+  render: string
+) {
   const select = makeChannelSelect(id)
+    .custom_value(render)
     .channel_types(TEXT_CHANNELS)
     .min_values(0)
     .max_values(1)
@@ -43,7 +49,15 @@ function settingsPanel(guild: GuildRow | null, warning?: string) {
     ? `**[${guild.repo_full_name}](${getProvider(guild.provider).repoUrl(guild.repo_full_name)})**`
     : '*Not connected* — run `/dispatch setup`';
 
-  const staffRole = makeRoleSelect('settings-staff').min_values(0).max_values(1).placeholder('No staff role');
+  // Discord keeps a select's local value across message edits when the
+  // custom_id is unchanged, so re-picking the same channel after a failed save
+  // sends nothing. A per-render suffix makes every panel's selects fresh.
+  const render = Date.now().toString(36);
+  const staffRole = makeRoleSelect('settings-staff')
+    .custom_value(render)
+    .min_values(0)
+    .max_values(1)
+    .placeholder('No staff role');
   const labels = parseLabels(settings.labels);
 
   return card([
@@ -51,9 +65,9 @@ function settingsPanel(guild: GuildRow | null, warning?: string) {
     warning ? text(`⚠️ ${warning}`) : null,
     divider(),
     text('### Triage queue\nNew reports wait here for staff approval before reaching the repository. Leave empty to file issues immediately.'),
-    row(channelSelect('settings-triage', settings.triage_channel_id ?? null, 'Off — file issues immediately')),
+    row(channelSelect('settings-triage', settings.triage_channel_id ?? null, 'Off — file issues immediately', render)),
     text('### Updates channel\nNew issues, fixes and reward roles are announced here.'),
-    row(channelSelect('settings-updates', settings.updates_channel_id ?? null, 'Off — no announcements')),
+    row(channelSelect('settings-updates', settings.updates_channel_id ?? null, 'Off — no announcements', render)),
     text('### Staff role\nCan approve or reject reports. Members with **Manage Server** always can.'),
     row(
       settings.staff_role_id

@@ -39,12 +39,12 @@
 			"name": "dispatch-beta",
 
 			"vars": {
-				"PUBLIC_URL": "https://dispatch-beta.example.workers.dev",
+				"PUBLIC_URL": "https://dispatch-beta.jakemackie.workers.dev",
 				"DISCORD_APPLICATION_ID": "1530351387320385586",
 				"DISCORD_PUBLIC_KEY": "d9ba7f51340f9e0aef3ce7224f3ddce364ff9ce12d28521408361ab365fb9a03",
-				"GITHUB_APP_ID": "",
-				"GITHUB_APP_SLUG": "",
-				"GITHUB_CLIENT_ID": ""
+				"GITHUB_APP_ID": "5516473",
+				"GITHUB_APP_SLUG": "dispatch-beta-jakemackie",
+				"GITHUB_CLIENT_ID": "Iv23lirZfBUE9YtYsVLx"
 			},
 
 			"d1_databases": [
