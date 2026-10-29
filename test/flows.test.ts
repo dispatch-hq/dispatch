@@ -441,6 +441,49 @@ describe('rewards and GitHub webhooks', () => {
     expect(board.json.data.allowed_mentions.parse).toEqual([]);
   });
 
+  it('keeps /stats public', async () => {
+    const stats = await w.interact({ type: 2, ...w.base(IDS.member), data: { id: 'c', name: 'stats', type: 1 } });
+    expect(stats.json.data.flags & EPHEMERAL).toBeFalsy();
+  });
+
+  it('/issues lists open issues anywhere and paginates', async () => {
+    const insert = w.sqlite.prepare(
+      `INSERT INTO reports (guild_id, reporter_id, reporter_name, title, description, status, repo_full_name, issue_number, issue_url)
+       VALUES (?, ?, 'reporter', ?, 'desc', 'open', 'acme/app', ?, ?)`
+    );
+    for (let i = 1; i <= 6; i++) insert.run(IDS.guild, IDS.member, `Extra bug ${i}`, 900 + i, `https://github.com/acme/app/issues/${900 + i}`);
+
+    // User-installed / DM context: `user` instead of `member`, no guild.
+    const dm = { user: w.member(IDS.member).user, context: 1 };
+    const first = await w.interact({ type: 2, ...dm, data: { id: 'c', name: 'issues', type: 1 } });
+    expect(first.json.data.flags & EPHEMERAL).toBeTruthy();
+    expect(textOf(first.json)).toContain('Page 1 of 2');
+    expect(textOf(first.json)).toContain('Extra bug 6');
+    expect(customIds(first.json)).toContain(`issues-page;${IDS.member}:1`);
+
+    const next = await w.interact({
+      type: 3,
+      ...dm,
+      message: { id: 'm', flags: EPHEMERAL | COMPONENTS_V2 },
+      data: { custom_id: `issues-page;${IDS.member}:1`, component_type: 2 },
+    });
+    expect(next.json.type).toBe(7);
+    expect(textOf(next.json)).toContain('Page 2 of 2');
+
+    const stranger = await w.interact({
+      type: 3,
+      user: w.member('999').user,
+      message: { id: 'm', flags: EPHEMERAL | COMPONENTS_V2 },
+      data: { custom_id: `issues-page;${IDS.member}:1`, component_type: 2 },
+    });
+    expect(stranger.json.type).toBe(4);
+    expect(textOf(stranger.json)).toContain('your own list');
+
+    w.sqlite.prepare(`DELETE FROM reports WHERE title LIKE 'Extra bug %'`).run();
+    const empty = await w.interact({ type: 2, ...dm, data: { id: 'c', name: 'issues', type: 1 } });
+    expect(textOf(empty.json)).not.toContain('Extra bug');
+  });
+
   it('takes the reward back when the issue is reopened', async () => {
     await webhook('issues', { action: 'reopened', issue: { number: 42 }, repository: { id: 99, full_name: 'acme/app' } });
     expect(reportRow(1).status).toBe('open');

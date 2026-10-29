@@ -281,6 +281,23 @@ export function getRecentReports(db: D1Database, guildId: string, reporterId: st
     .then((r) => r.results);
 }
 
+/**
+ * One page of a reporter's open issues across every server that still has a
+ * repository connected, newest first. `total` is the unpaged count.
+ */
+export async function getActiveIssues(db: D1Database, reporterId: string, limit: number, offset: number) {
+  const where = `FROM reports r JOIN guilds g ON g.guild_id = r.guild_id
+    WHERE r.reporter_id = ? AND r.status = 'open' AND g.repo_id IS NOT NULL`;
+  const [page, count] = await Promise.all([
+    db
+      .prepare(`SELECT r.* ${where} ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?`)
+      .bind(reporterId, limit, offset)
+      .all<ReportRow>(),
+    db.prepare(`SELECT COUNT(*) AS total ${where}`).bind(reporterId).first<{ total: number }>(),
+  ]);
+  return { issues: page.results, total: count?.total ?? 0 };
+}
+
 export function getLeaderboard(db: D1Database, guildId: string, limit = 10) {
   return db
     .prepare(

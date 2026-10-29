@@ -1,7 +1,7 @@
 import type { APIInteractionGuildMember } from 'discord-api-types/v10';
-import { EPHEMERAL_V2, notice, view } from '../lib/ui';
+import { EPHEMERAL_V2, notice, PUBLIC_V2, view } from '../lib/ui';
 
-type Flag = (typeof EPHEMERAL_V2)[number];
+type Flag = (typeof EPHEMERAL_V2)[number] | (typeof PUBLIC_V2)[number];
 
 /** Minimal shape shared by command, component and modal contexts. */
 type Responder = {
@@ -26,6 +26,11 @@ export function inGuild(interaction: GuildInteraction) {
 
 export function reply(c: Responder, message: string): Response {
   return c.flags(...EPHEMERAL_V2).res(view([notice(message)]));
+}
+
+/** Like `reply`, but visible to the whole channel — for outcomes others benefit from seeing. */
+export function announceReply(c: Responder, message: string): Response {
+  return c.flags(...PUBLIC_V2).res(view([notice(message)]));
 }
 
 export function deny(c: Responder, message: string): Response {

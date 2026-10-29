@@ -1,7 +1,7 @@
 import { makeSlashCommand, makeUserOption } from 'discord-hono';
 import { getLeaderboard, getRecentReports, getReporterStats, getRewardTiers } from '../db';
 import { escapeMarkdown, truncate } from '../lib/format';
-import { card, divider, EPHEMERAL_V2, PUBLIC_V2, text, view } from '../lib/ui';
+import { card, divider, PUBLIC_V2, text, view } from '../lib/ui';
 import { factory } from '../init';
 import { issueRef } from '../services/reports';
 import type { ReportRow } from '../types';
@@ -47,7 +47,7 @@ export const command_stats = factory.command(
       next ? `Next: <@&${next.role_id}> in **${next.threshold - stats.fixed}** more fixed report(s)` : null,
     ];
 
-    return c.flags(...EPHEMERAL_V2).res(
+    return c.flags(...PUBLIC_V2).res(
       view([
         card([
           text(`## Bug reports\n<@${userId}>`),

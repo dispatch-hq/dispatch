@@ -1,9 +1,9 @@
 import { makeIntegerOption, makeRoleOption, makeSubCommand, makeSubCommandGroup } from 'discord-hono';
 import { deleteRewardTier, getQualifiedReporters, getRewardTiers, upsertRewardTier } from '../../db';
-import { card, divider, EPHEMERAL_V2, notice, text, view } from '../../lib/ui';
+import { card, divider, notice, PUBLIC_V2, text, view } from '../../lib/ui';
 import { factory } from '../../init';
 import { syncRewards } from '../../services/rewards';
-import { deny, guarded, inGuild, messages, reply } from '../shared';
+import { announceReply, deny, guarded, inGuild, messages } from '../shared';
 
 /** Existing reporters who qualify when a tier is added are backfilled, up to this many per run. */
 const BACKFILL_LIMIT = 20;
@@ -26,7 +26,7 @@ const sub_add = factory.subCommand(
     if (roleId === ctx.guildId) return deny(c, "`@everyone` can't be a reward.");
     if (role?.managed) return deny(c, `<@&${roleId}> is managed by an integration and can't be assigned.`);
 
-    return c.flags(...EPHEMERAL_V2).resDefer(
+    return c.flags(...PUBLIC_V2).resDefer(
       guarded(async (c) => {
         await upsertRewardTier(c.env.DB, { guild_id: ctx.guildId, role_id: roleId, threshold });
 
@@ -64,7 +64,7 @@ const sub_remove = factory.subCommand(
 
     const removed = await deleteRewardTier(c.env.DB, ctx.guildId, c.var.role);
     return removed
-      ? reply(c, `<@&${c.var.role}> is no longer a reward. Members who already have it keep it.`)
+      ? announceReply(c, `<@&${c.var.role}> is no longer a reward. Members who already have it keep it.`)
       : deny(c, `<@&${c.var.role}> isn't a reward role.`);
   }
 );
@@ -78,7 +78,7 @@ const sub_list = factory.subCommand(makeSubCommand('list', 'Show reward roles'),
     ? tiers.map((t) => `**${t.threshold}** fixed → <@&${t.role_id}>`).join('\n')
     : 'No reward roles yet. Add one with `/dispatch rewards add`.';
 
-  return c.flags(...EPHEMERAL_V2).res(
+  return c.flags(...PUBLIC_V2).res(
     view([
       card([
         text('## Reward roles'),
