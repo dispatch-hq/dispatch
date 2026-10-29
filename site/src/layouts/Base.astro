@@ -13,6 +13,9 @@ interface Props {
   path?: string;
   /** Keep the page out of search results and skip the social-preview tags. */
   noindex?: boolean;
+  /** Path of the 1200×630 social preview image. */
+  ogImage?: string;
+  imageAlt?: string;
 }
 
 const siteName = 'Dispatch';
@@ -21,11 +24,12 @@ const {
   description = 'Dispatch turns /report in Discord into GitHub issues. Triage with a button, keep reporters posted, and reward your best bug hunters with roles.',
   path = Astro.url.pathname,
   noindex = false,
+  ogImage = '/og.png',
+  imageAlt = 'Dispatch: bug reports from Discord, straight to GitHub.',
 } = Astro.props;
 
 const canonical = new URL(path, Astro.site).href;
-const image = new URL('/og.png', Astro.site).href;
-const imageAlt = 'Dispatch: bug reports from Discord, straight to GitHub.';
+const image = new URL(ogImage, Astro.site).href;
 
 const structuredData = {
   '@context': 'https://schema.org',
