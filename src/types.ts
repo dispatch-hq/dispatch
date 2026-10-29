@@ -21,9 +21,6 @@ export type Bindings = {
 
   /** Random secret used to sign OAuth state and link tokens */
   STATE_SECRET: string;
-
-  /** Hex accent colour for message cards, e.g. `84fada`. Defaults to the brand colour; beta sets its own. */
-  ACCENT_COLOR?: string;
 };
 
 export type AppEnv = {
