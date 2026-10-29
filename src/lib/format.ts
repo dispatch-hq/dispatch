@@ -38,6 +38,22 @@ export function parseLabels(value: string): string[] {
   return [...new Set(value.split(',').map((l) => l.trim()).filter(Boolean))].slice(0, 10);
 }
 
+export const MAX_REPORT_TYPES = 10;
+
+/**
+ * Report types from the comma-separated guild setting. Each one is a select
+ * option and an issue label, so names are trimmed to GitHub's 50-character
+ * label limit and deduplicated ignoring case.
+ */
+export function parseReportTypes(value: string): string[] {
+  const types = new Map<string, string>();
+  for (const raw of value.split(',')) {
+    const name = raw.trim().slice(0, 50).trim();
+    if (name && !types.has(name.toLowerCase())) types.set(name.toLowerCase(), name);
+  }
+  return [...types.values()].slice(0, MAX_REPORT_TYPES);
+}
+
 export function issueTitle(report: Pick<ReportRow, 'title'>): string {
   return truncate(neutralizeMentions(report.title), 256);
 }

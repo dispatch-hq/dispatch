@@ -67,7 +67,13 @@ export function unlinkRepository(db: D1Database, guildId: string) {
 export type GuildSettings = Partial<
   Pick<
     GuildRow,
-    'triage_channel_id' | 'updates_channel_id' | 'staff_role_id' | 'dm_reporters' | 'labels' | 'cooldown_seconds'
+    | 'triage_channel_id'
+    | 'updates_channel_id'
+    | 'staff_role_id'
+    | 'dm_reporters'
+    | 'labels'
+    | 'report_types'
+    | 'cooldown_seconds'
   >
 >;
 
@@ -134,14 +140,15 @@ export type NewReport = {
   steps: string | null;
   environment: string | null;
   sourceUrl: string | null;
+  reportType: string | null;
   attachments: Attachment[];
 };
 
 export async function createReport(db: D1Database, report: NewReport): Promise<ReportRow> {
   const row = await db
     .prepare(
-      `INSERT INTO reports (guild_id, reporter_id, reporter_name, title, description, steps, environment, source_url, attachments)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO reports (guild_id, reporter_id, reporter_name, title, description, steps, environment, source_url, report_type, attachments)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING *`
     )
     .bind(
@@ -153,11 +160,40 @@ export async function createReport(db: D1Database, report: NewReport): Promise<R
       report.steps,
       report.environment,
       report.sourceUrl,
+      report.reportType,
       JSON.stringify(report.attachments)
     )
     .first<ReportRow>();
   if (!row) throw new Error('Failed to insert report');
   return row;
+}
+
+/* Drafts: a reported message's text, parked while the reporter picks a type. */
+
+export type ReportDraft = { id: number; guild_id: string; user_id: string; source: string | null; description: string | null };
+
+export async function createDraft(
+  db: D1Database,
+  draft: { guildId: string; userId: string; source: string | null; description: string | null }
+) {
+  await db.prepare(`DELETE FROM report_drafts WHERE created_at < datetime('now', '-1 day')`).run();
+  const row = await db
+    .prepare(`INSERT INTO report_drafts (guild_id, user_id, source, description) VALUES (?, ?, ?, ?) RETURNING id`)
+    .bind(draft.guildId, draft.userId, draft.source, draft.description)
+    .first<{ id: number }>();
+  if (!row) throw new Error('Failed to insert draft');
+  return row.id;
+}
+
+/** Only the member who started the report can read their draft, and only for a day. */
+export function getDraft(db: D1Database, id: number, guildId: string, userId: string) {
+  return db
+    .prepare(
+      `SELECT * FROM report_drafts
+       WHERE id = ? AND guild_id = ? AND user_id = ? AND created_at >= datetime('now', '-1 day')`
+    )
+    .bind(id, guildId, userId)
+    .first<ReportDraft>();
 }
 
 export function deleteReport(db: D1Database, id: number) {

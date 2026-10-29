@@ -11,8 +11,9 @@ It's a serverless Discord app: no gateway connection, no always-on process. It r
 | | |
 | --- | --- |
 | 🐛 **`/report`** | A modal with title, description, steps to reproduce, environment and up to 3 screenshots/logs. Creates a GitHub issue. |
+| 🏷️ **Report types** (optional) | Admins define types like *Crash, UI, Performance*. Members pick one before the form opens, and it is added to the issue as a label. Servers that don't set any are unaffected. |
 | 🖱️ **Report from a message** | Right-click any message → **Apps → Report bug**. The form is pre-filled and links back to the message. |
-| 🛡️ **Triage queue** (optional) | Reports land in a staff channel first. **Approve** files the issue; **Reject** sends the reporter a reason. |
+| 🛡️ **Triage queue** (optional) | Reports land in a staff channel first, each with its own thread for discussion. **Approve** files the issue; **Reject** sends the reporter a reason. |
 | 📣 **Status updates** | Reporters get a DM when their report is approved, fixed, closed, reopened or answered by a maintainer. An optional updates channel announces new issues and fixes. |
 | 🏆 **Reward roles** | `/dispatch rewards add @Bug Hunter 5` grants a role after 5 fixed reports. Reopening an issue takes the credit back. |
 | 📊 **`/stats` & `/leaderboard`** | Personal progress toward the next reward, plus the server's top reporters. |
@@ -50,7 +51,7 @@ npm run prod:register  # register slash commands
 Then, in your Discord server:
 
 1. `/dispatch setup` → install the GitHub App → sign in → pick the repository.
-2. `/dispatch settings` (optional) → choose a triage channel, updates channel, staff role, labels and cooldown.
+2. `/dispatch settings` (optional) → choose a triage channel, updates channel, staff role, labels, report types and cooldown.
 3. `/dispatch rewards add` (optional) → reward great reporters.
 
 ## 🧞 Commands
@@ -59,10 +60,11 @@ Then, in your Discord server:
 | --- | --- | --- |
 | `/report` | Everyone | Open the bug report form |
 | *Apps → Report bug* | Everyone | Report a bug from an existing message |
+| `/issues` | Everyone | Your open reports across every server using Dispatch. Works in DMs too |
 | `/stats [member]` | Everyone | Report counts and reward progress |
 | `/leaderboard` | Everyone | Top reporters by fixed bugs |
 | `/dispatch setup` | Manage Server | Connect (or change) the GitHub repository |
-| `/dispatch settings` | Manage Server | Triage queue, updates channel, staff role, labels, cooldown, reporter DMs |
+| `/dispatch settings` | Manage Server | Triage queue, updates channel, staff role, labels, report types, cooldown, reporter DMs |
 | `/dispatch disconnect` | Manage Server | Unlink the repository |
 | `/dispatch rewards add / remove / list` | Manage Server | Configure reward roles |
 

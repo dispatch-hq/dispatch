@@ -1,6 +1,7 @@
 import {
   $channels$_$messages,
   $channels$_$messages$_,
+  $channels$_$messages$_$threads,
   $guilds$_$members$_,
   $guilds$_$members$_$roles$_,
   $users$me$channels,
@@ -41,6 +42,25 @@ export async function editChannelMessage(
 ): Promise<boolean> {
   const res = await createRest(env.DISCORD_TOKEN)('PATCH', $channels$_$messages$_, [channelId, messageId], message(components));
   return res.ok || failed(`edit message ${messageId}`, res);
+}
+
+/**
+ * Starts a public thread on a message. The thread reuses the message's id, so
+ * it can be addressed later without storing anything. Needs *Create Public
+ * Threads*; without it the report simply has no thread.
+ */
+export async function startThread(
+  env: Bindings,
+  channelId: string,
+  messageId: string,
+  name: string
+): Promise<boolean> {
+  const res = await createRest(env.DISCORD_TOKEN)('POST', $channels$_$messages$_$threads, [channelId, messageId], {
+    name,
+    // 1 day: always allowed. Longer windows depend on the server's boost level.
+    auto_archive_duration: 1440,
+  });
+  return res.ok || failed(`start thread on message ${messageId}`, res);
 }
 
 export async function sendDirectMessage(env: Bindings, userId: string, components: Container[]): Promise<boolean> {

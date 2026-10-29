@@ -1,6 +1,8 @@
 import { createHmac } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { signToken } from '../src/lib/crypto';
+import { startThread } from '../src/services/discord';
+import { threadName } from '../src/services/reports';
 import { createWorld, IDS, type World } from './support/harness';
 
 /**
@@ -79,6 +81,7 @@ beforeAll(() => {
   let message = 0;
   on('POST', /discord\.com\/api\/v10\/channels\/([\w-]+)\/messages$/, () => ({ id: `msg-${++message}` }));
   on('PATCH', /discord\.com\/api\/v10\/channels\/[\w-]+\/messages\/[\w-]+$/, () => ({}));
+  on('POST', /discord\.com\/api\/v10\/channels\/[\w-]+\/messages\/[\w-]+\/threads$/, () => ({ id: 'thread' }));
   on('POST', /discord\.com\/api\/v10\/users\/@me\/channels/, (call) => ({ id: `dm-${call.body.recipient_id}` }));
   on('GET', /discord\.com\/api\/v10\/guilds\/\d+\/members\/(\d+)$/, (_, m) => ({ roles: memberRoles[m[1]!] ?? [] }));
   on('PUT', /discord\.com\/api\/v10\/guilds\/\d+\/members\/(\d+)\/roles\/(\d+)/, (_, m) => {
@@ -333,16 +336,37 @@ describe('settings panel', () => {
   });
 });
 
+describe('triage threads', () => {
+  it('names threads after the report, within Discord limits', () => {
+    expect(threadName({ id: 7, title: 'Crash\non  startup' })).toBe('Report #7 · Crash on startup');
+    const long = threadName({ id: 12, title: 'x'.repeat(300) });
+    expect(long).toHaveLength(100);
+    expect(long.startsWith('Report #12 · xxx')).toBe(true);
+    expect(long.endsWith('…')).toBe(true);
+  });
+
+  it('never throws when the bot lacks permission to start a thread', async () => {
+    w.http.on('POST', /\/messages\/denied\/threads$/, () => Response.json({ message: 'Missing Permissions', code: 50013 }, { status: 403 }));
+    await expect(startThread(w.env, IDS.triage, 'denied', 'Report #1 · x')).resolves.toBe(false);
+    await expect(startThread(w.env, IDS.triage, 'allowed', 'Report #1 · x')).resolves.toBe(true);
+  });
+});
+
 describe('triage queue', () => {
   it('queues new reports for review instead of filing them', async () => {
     const before = w.http.find('POST', /repos\/acme\/app\/issues$/).length;
     const res = await w.interact({ ...w.base(IDS.member), ...report({ title: 'Typo on homepage', description: 'Says "teh" instead of "the"' }) });
 
     expect(w.http.find('POST', /repos\/acme\/app\/issues$/)).toHaveLength(before);
-    const card = discordCalls('POST', new RegExp(`/channels/${IDS.triage}/messages`)).at(-1)!;
+    const card = discordCalls('POST', new RegExp(`/channels/${IDS.triage}/messages$`)).at(-1)!;
     expect(customIds(card.body)).toEqual(['triage-approve;2', 'triage-reject;2']);
     expect(card.body.allowed_mentions).toEqual({ parse: [], users: [] });
     expect(reportRow(2)).toMatchObject({ status: 'pending', triage_channel_id: IDS.triage, triage_message_id: expect.any(String) });
+
+    // Each queued report gets a discussion thread on its card.
+    const thread = discordCalls('POST', new RegExp(`/channels/${IDS.triage}/messages/[\\w-]+/threads$`)).at(-1)!;
+    expect(thread.url).toContain(`/messages/${reportRow(2).triage_message_id}/threads`);
+    expect(thread.body).toEqual({ name: 'Report #2 · Typo on homepage', auto_archive_duration: 1440 });
 
     const followup = followupOf(res.token);
     expect(textOf(followup.body)).toContain('waiting for a moderator');
@@ -589,5 +613,114 @@ describe('web', () => {
     const location = res.headers.get('location')!;
     expect(location).toContain(`client_id=${IDS.app}`);
     expect(location).toContain('scope=bot+applications.commands');
+  });
+});
+
+describe('report types', () => {
+  const lastIssue = () => w.http.find('POST', /repos\/acme\/app\/issues$/).at(-1)!;
+  const latestReport = () => w.sqlite.prepare('SELECT * FROM reports ORDER BY id DESC LIMIT 1').get() as any;
+  const submit = (customId: string, title: string) =>
+    w.interact({ ...w.base(IDS.member), ...report({ title, description: 'Something is clearly broken here' }, { custom_id: customId }) });
+
+  const settingsSubmit = (types: string) =>
+    w.interact({
+      type: 5,
+      ...w.base(IDS.admin, true),
+      data: {
+        custom_id: 'settings-edit',
+        components: [
+          { type: 18, component: { type: 4, custom_id: 'labels', value: 'bug' } },
+          { type: 18, component: { type: 4, custom_id: 'types', value: types } },
+          { type: 18, component: { type: 4, custom_id: 'cooldown', value: '0' } },
+        ],
+      },
+    });
+
+  beforeAll(() => {
+    // The earlier flows left this server unlinked; start from a plain, directly-filing setup.
+    w.sqlite.exec(
+      `UPDATE guilds SET provider = 'github', installation_id = 7, repo_id = 99, repo_full_name = 'acme/app',
+         triage_channel_id = NULL, labels = 'bug', report_types = '', cooldown_seconds = 0`
+    );
+  });
+
+  it('goes straight to the form when a server has no types (nothing to migrate)', async () => {
+    const res = await w.interact({ type: 2, ...w.base(IDS.member), data: { id: 'c', name: 'report', type: 1 } });
+    expect(res.json.type).toBe(9);
+    expect(res.json.data.custom_id).toBe('report');
+  });
+
+  it('saves types from the settings modal, deduplicated, and caps them', async () => {
+    await settingsSubmit('Crash, UI, crash, Performance');
+    expect(w.sqlite.prepare('SELECT report_types FROM guilds').get()).toEqual({ report_types: 'Crash, UI, Performance' });
+
+    const tooMany = await settingsSubmit('a,b,c,d,e,f,g,h,i,j,k');
+    expect(textOf(tooMany.json)).toContain('at most 10');
+    expect(w.sqlite.prepare('SELECT report_types FROM guilds').get()).toEqual({ report_types: 'Crash, UI, Performance' });
+  });
+
+  it('asks for a type before opening the form, and carries it into the modal', async () => {
+    const picker = await w.interact({ type: 2, ...w.base(IDS.member), data: { id: 'c', name: 'report', type: 1 } });
+    expect(picker.json.type).toBe(4);
+    expect(picker.json.data.flags & EPHEMERAL).toBeTruthy();
+    expect(customIds(picker.json)).toEqual(['report-type']);
+    for (const type of ['Crash', 'UI', 'Performance']) expect(JSON.stringify(picker.json)).toContain(`"label":"${type}"`);
+
+    const modal = await w.interact({ type: 3, ...w.base(IDS.member), data: { custom_id: 'report-type', component_type: 3, values: ['1'] } });
+    expect(modal.json.type).toBe(9);
+    expect(modal.json.data.custom_id).toBe('report;1|');
+    expect(modal.json.data.title).toBe('Report a bug · UI');
+  });
+
+  it('files the issue with the base labels plus the chosen type', async () => {
+    const res = await submit('report;1|', 'Settings page is blank');
+    expect(textOf(followupOf(res.token).body)).toContain('Issue created');
+    expect(lastIssue().body.labels).toEqual(['bug', 'UI']);
+    expect(latestReport()).toMatchObject({ report_type: 'UI', status: 'open' });
+  });
+
+  it('ignores a type index the server no longer offers', async () => {
+    await submit('report;9|', 'Stale form submission');
+    expect(lastIssue().body.labels).toEqual(['bug']);
+    expect(latestReport().report_type).toBeNull();
+  });
+
+  it('still accepts a form opened before report types existed', async () => {
+    await submit(`report;${IDS.channel}:900`, 'Old style form');
+    expect(latestReport()).toMatchObject({ report_type: null, source_url: expect.stringContaining('/900') });
+    expect(lastIssue().body.labels).toEqual(['bug']);
+  });
+
+  it('keeps a reported message pre-filled through the picker, for its owner only', async () => {
+    const target = { id: '900', channel_id: IDS.channel, content: 'the login button does nothing' };
+    const picker = await w.interact({
+      type: 2,
+      ...w.base(IDS.member),
+      data: { id: 'c', name: 'Report bug', type: 3, target_id: '900', resolved: { messages: { '900': target } } },
+    });
+    expect(picker.json.type).toBe(4);
+    const [select] = customIds(picker.json);
+    expect(select).toMatch(/^report-type;\d+$/);
+
+    const own = await w.interact({ type: 3, ...w.base(IDS.member), data: { custom_id: select, component_type: 3, values: ['0'] } });
+    expect(own.json.data.custom_id).toBe(`report;0|${IDS.channel}:900`);
+    expect(JSON.stringify(own.json.data)).toContain('the login button does nothing');
+
+    const other = await w.interact({ type: 3, ...w.base('999'), data: { custom_id: select, component_type: 3, values: ['0'] } });
+    expect(other.json.type).toBe(9);
+    expect(JSON.stringify(other.json.data)).not.toContain('the login button does nothing');
+  });
+
+  it('shows the type on the triage card and applies it when staff approve', async () => {
+    w.sqlite.exec(`UPDATE guilds SET triage_channel_id = '${IDS.triage}'`);
+    await submit('report;0|', 'Crash on export');
+    const id = latestReport().id;
+
+    const card = discordCalls('POST', new RegExp(`/channels/${IDS.triage}/messages$`)).at(-1)!;
+    expect(textOf(card.body)).toContain('· Crash');
+    expect(latestReport()).toMatchObject({ status: 'pending', report_type: 'Crash' });
+
+    await w.interact({ type: 3, ...w.base(IDS.admin, true), data: { custom_id: `triage-approve;${id}`, component_type: 2 } });
+    expect(lastIssue().body.labels).toEqual(['bug', 'Crash']);
   });
 });

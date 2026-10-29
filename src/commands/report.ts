@@ -5,12 +5,13 @@ import {
   makeMessageCommand,
   makeModal,
   makeSlashCommand,
+  makeStringSelect,
   makeTextInput,
   textInputStyle,
 } from 'discord-hono';
-import { getLinkedGuild, secondsSinceLastReport } from '../db';
-import { clean, messageUrl, truncate } from '../lib/format';
-import { EPHEMERAL_V2, notice, view } from '../lib/ui';
+import { createDraft, getDraft, getLinkedGuild, secondsSinceLastReport } from '../db';
+import { clean, messageUrl, parseReportTypes, truncate } from '../lib/format';
+import { card, EPHEMERAL_V2, notice, row, text, view } from '../lib/ui';
 import { factory } from '../init';
 import { rehostAttachments } from '../services/attachments';
 import { receiptCard, submitReport } from '../services/reports';
@@ -23,7 +24,28 @@ import { deny, guarded, inGuild, messages } from './shared';
 
 const DESCRIPTION_MIN = 10;
 
-function reportModal(prefill: { description?: string; source?: string } = {}) {
+/**
+ * What the form needs to remember between opening and submitting, carried in
+ * the modal's custom_id as `<type index>|<channelId>:<messageId>`. Either half
+ * may be empty. A bare `channelId:messageId` is the format from before report
+ * types existed, so forms already open during a deploy still submit.
+ */
+function encodeContext(context: { type?: number; source?: string }): string | undefined {
+  // Without a type, keep the original format so servers not using types are unchanged.
+  if (context.type === undefined) return context.source || undefined;
+  return `${context.type}|${context.source ?? ''}`;
+}
+
+function decodeContext(value: string | undefined): { type: number | null; source: string } {
+  const raw = value ?? '';
+  if (!raw.includes('|')) return { type: null, source: raw };
+  const [type = '', source = ''] = raw.split('|');
+  return { type: type === '' ? null : Number(type), source };
+}
+
+type Prefill = { description?: string; source?: string; type?: { index: number; name: string } };
+
+function reportModal(prefill: Prefill = {}) {
   const description = makeTextInput('description', undefined, textInputStyle.Paragraph)
     .placeholder('What went wrong? What did you expect to happen instead?')
     .min_length(DESCRIPTION_MIN)
@@ -34,7 +56,8 @@ function reportModal(prefill: { description?: string; source?: string } = {}) {
   // ("application didn't respond"), so short messages are left for the reporter to expand on.
   const prefilled = prefill.description && prefill.description.length >= DESCRIPTION_MIN;
 
-  const modal = makeModal('report', 'Report a bug', [
+  const title = prefill.type ? truncate(`Report a bug · ${prefill.type.name}`, 45) : 'Report a bug';
+  const modal = makeModal('report', title, [
     makeLabel(
       'Title',
       makeTextInput('title')
@@ -66,7 +89,8 @@ function reportModal(prefill: { description?: string; source?: string } = {}) {
     ),
   ]);
 
-  return prefill.source ? modal.custom_value(prefill.source) : modal;
+  const context = encodeContext({ type: prefill.type?.index, source: prefill.source });
+  return context ? modal.custom_value(context) : modal;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -87,6 +111,53 @@ async function canReport(env: Bindings, guildId: string, userId: string): Promis
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                Type picker                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Servers that define report types ask for one first, because the form itself
+ * is full (Discord allows five inputs). `draft` is the id of a parked message
+ * when the report started from "Apps → Report bug", so the form can still be
+ * pre-filled once a type is chosen.
+ */
+function typePicker(types: string[], draft?: number) {
+  const select = makeStringSelect(
+    'report-type',
+    types.map((type, index) => [String(index), type] as const)
+  ).placeholder('Choose a type');
+
+  return view([
+    card([
+      text('### What kind of problem is it?\nPick the closest match. The form opens next.'),
+      row(draft === undefined ? select : select.custom_value(String(draft))),
+    ]),
+  ]);
+}
+
+export const select_report_type = factory.component(makeStringSelect('report-type', [['0', 'type']]), async (c) => {
+  const ctx = inGuild(c.interaction);
+  if (!ctx) return deny(c, messages.guildOnly);
+
+  const check = await canReport(c.env, ctx.guildId, ctx.member.user.id);
+  if ('error' in check) return deny(c, check.error);
+
+  const index = Number(c.ref.values?.[0]);
+  const name = parseReportTypes(check.guild.report_types)[index];
+  if (!name) return deny(c, 'That option is no longer available. Run the command again.');
+
+  const draftId = Number(c.ref.custom_value);
+  const draft = draftId ? await getDraft(c.env.DB, draftId, ctx.guildId, ctx.member.user.id) : null;
+
+  return c.resModal(
+    reportModal({
+      description: draft?.description ?? undefined,
+      source: draft?.source ?? undefined,
+      type: { index, name },
+    })
+  );
+});
+
+/* -------------------------------------------------------------------------- */
 /*                                  Handlers                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -99,6 +170,8 @@ export const command_report = factory.command(
     const check = await canReport(c.env, ctx.guildId, ctx.member.user.id);
     if ('error' in check) return deny(c, check.error);
 
+    const types = parseReportTypes(check.guild.report_types);
+    if (types.length) return c.flags(...EPHEMERAL_V2).res(typePicker(types));
     return c.resModal(reportModal());
   }
 );
@@ -113,12 +186,20 @@ export const command_report_message = factory.command(
     if ('error' in check) return deny(c, check.error);
 
     const target = c.interaction.data.resolved.messages[c.interaction.data.target_id];
-    return c.resModal(
-      reportModal({
-        description: target?.content || undefined,
-        source: target ? `${target.channel_id}:${target.id}` : undefined,
-      })
-    );
+    const source = target ? `${target.channel_id}:${target.id}` : undefined;
+
+    const types = parseReportTypes(check.guild.report_types);
+    if (types.length) {
+      const draft = await createDraft(c.env.DB, {
+        guildId: ctx.guildId,
+        userId: ctx.member.user.id,
+        source: source ?? null,
+        description: target?.content || null,
+      });
+      return c.flags(...EPHEMERAL_V2).res(typePicker(types, draft));
+    }
+
+    return c.resModal(reportModal({ description: target?.content || undefined, source }));
   }
 );
 
@@ -136,7 +217,10 @@ export const modal_report = factory.modal(reportModal(), (c) =>
         .filter((a): a is APIAttachment => !!a);
       const { attachments, skipped } = await rehostAttachments(c.env, ctx.guildId, uploads);
 
-      const [channelId, messageId] = (c.ref.custom_value ?? '').split(':');
+      const context = decodeContext(c.ref.custom_value);
+      const [channelId, messageId] = context.source.split(':');
+      // Only accept a type the server still offers, so a stale form can't invent labels.
+      const reportType = context.type === null ? null : (parseReportTypes(check.guild.report_types)[context.type] ?? null);
       const sourceUrl = channelId && messageId ? messageUrl(ctx.guildId, channelId, messageId) : null;
 
       const outcome = await submitReport(c.env, c.executionCtx, check.guild, {
@@ -148,6 +232,7 @@ export const modal_report = factory.modal(reportModal(), (c) =>
         steps: clean(c.var.steps),
         environment: clean(c.var.environment),
         sourceUrl,
+        reportType,
         attachments,
       });
 

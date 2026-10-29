@@ -6,8 +6,8 @@ import { githubRoutes } from './web/github';
 
 const bot = factory.discord().loader(Object.values(handlers));
 
-/** View Channel, Send Messages, Embed Links, Manage Roles. */
-const BOT_PERMISSIONS = ((1n << 10n) | (1n << 11n) | (1n << 14n) | (1n << 28n)).toString();
+/** View Channel, Send Messages, Embed Links, Manage Roles, Create Public Threads. */
+const BOT_PERMISSIONS = ((1n << 10n) | (1n << 11n) | (1n << 14n) | (1n << 28n) | (1n << 35n)).toString();
 
 const app = new Hono<AppEnv>();
 

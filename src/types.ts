@@ -42,6 +42,8 @@ export type GuildRow = {
   staff_role_id: string | null;
   dm_reporters: number;
   labels: string;
+  /** Comma separated; empty means no picker. */
+  report_types: string;
   cooldown_seconds: number;
   created_at: string;
   updated_at: string;
@@ -74,6 +76,8 @@ export type ReportRow = {
   environment: string | null;
   source_url: string | null;
   attachments: string;
+  /** Type picked in the form (also an issue label), if the server has types. */
+  report_type: string | null;
   status: ReportStatus;
   provider: Provider | null;
   repo_id: number | null;

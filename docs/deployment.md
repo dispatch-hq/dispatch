@@ -9,7 +9,9 @@ Dispatch is a single Cloudflare Worker. Discord and GitHub both reach it over HT
 | `POST /github/link` | Admin's browser | Confirms the chosen repository |
 | `POST /github/webhook` | GitHub | Issue closed / reopened / commented, app uninstalled, repo renamed |
 | `GET /files/reports/*` | Anyone with the link | Attachments rehosted from Discord |
-| `GET /` | Anyone | Landing page with an *Add to Discord* link |
+| `GET /` | Anyone | Landing site (static assets from `site/`) |
+| `GET /invite` | Anyone | Redirects to Discord's *Add to Discord* authorize page for this environment |
+| `GET /shell/` | The Worker | Hidden site frame that the GitHub sign-in pages are rendered into |
 
 Below, `PUBLIC_URL` is the Worker's public origin, e.g. `https://dispatch.example.workers.dev`. Repeat each step for the **beta** environment (`--env beta`) if you use one.
 
@@ -35,7 +37,7 @@ In the [Developer Portal](https://discord.com/developers/applications):
 1. Copy the **Application ID** and **Public Key** into `wrangler.jsonc` (`DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`).
 2. **Bot → Reset Token** and store it as the `DISCORD_TOKEN` secret (step 4). No privileged intents are needed.
 3. After the first deploy, set **Interactions Endpoint URL** to `PUBLIC_URL/interactions`.
-4. Invite the bot with the *Add to Discord* button on `PUBLIC_URL`. It asks for *View Channel*, *Send Messages*, *Embed Links* and *Manage Roles*.
+4. Invite the bot with the *Add to Discord* button on `PUBLIC_URL`. It asks for *View Channel*, *Send Messages*, *Embed Links*, *Manage Roles* and *Create Public Threads* (for the discussion thread on each triage report; without it, reports are still queued, just without a thread). Servers that added the bot earlier can grant *Create Public Threads* on the triage channel, or re-invite it.
 
 > For reward roles, Dispatch's own role must sit **above** every reward role in *Server Settings → Roles*. Otherwise Discord refuses the assignment, and `/dispatch rewards add` tells you so.
 
@@ -107,6 +109,7 @@ npx wrangler tail --env beta --format pretty
 
 | Symptom | Cause |
 | --- | --- |
+| Triage cards have no discussion thread | The bot lacks *Create Public Threads* in the triage channel. Grant it there; new reports will get threads (existing cards won't be back-filled). |
 | "I can't post in #channel" in `/dispatch settings` (`403 Missing Access`) | The bot can't see that channel, typically a private category. Give it *View Channel* and *Send Messages* there. |
 | Reporters never get DMs (`50278` / `50007` in the logs) | The member has DMs from server members turned off (*Server menu → Privacy Settings*). Dispatch skips the DM; updates-channel posts still work. |
 | Old commands (e.g. `/repository …`) still show up | Global commands left over from an earlier version. Run `npm run beta:register -- --clear-global` (needs `DISCORD_GUILD_ID`). |

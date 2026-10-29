@@ -6,8 +6,9 @@ Dispatch stores its state in **Cloudflare D1** (serverless SQLite), bound as `DB
 
 | Table | One row per | Notes |
 | --- | --- | --- |
-| `guilds` | Discord server | Linked repository (`provider`, `installation_id`, `repo_id`, `repo_full_name`) plus settings (triage/updates channels, staff role, labels, cooldown, reporter DMs). Repository columns are `NULL` when nothing is linked; settings survive unlinking. |
+| `guilds` | Discord server | Linked repository (`provider`, `installation_id`, `repo_id`, `repo_full_name`) plus settings (triage/updates channels, staff role, labels, report types, cooldown, reporter DMs). Repository columns are `NULL` when nothing is linked; settings survive unlinking. |
 | `reports` | Bug report | Submitted content, rehosted attachments (JSON), status, and the issue it became. Indexed by `(provider, repo_id, issue_number)` for webhook lookups. |
+| `report_drafts` | Pending "Report bug" | The text of a message parked while the reporter picks a report type, so the form can still be pre-filled. Ignored after a day and swept on the next write. |
 | `reward_tiers` | Reward role | `threshold` fixed reports → `role_id`. |
 
 Report status lifecycle:
@@ -36,6 +37,8 @@ npm run dev:migrate                                    # local SQLite (.wrangler
 npm run beta:migrate                                   # beta D1
 npm run prod:migrate                                   # production D1
 ```
+
+**Migrate before you deploy.** Cloudflare builds and deploys on every push, but it does not run migrations. Code that reads a new column fails until the migration has run, so apply `beta:migrate` / `prod:migrate` first. Additive migrations (new columns and tables with defaults) are safe to run ahead of the code.
 
 Write non-destructive SQL (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN`). The test suite applies every migration to an in-memory database, so `npm test` catches broken SQL before it ships.
 

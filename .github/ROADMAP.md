@@ -38,8 +38,11 @@ The goal of the MVP is to make the core workflow reliable:
 | Required fields for reports           | ✅      | Title and description |
 | Reproduction steps                    | ✅      | |
 | Environment and version information   | ✅      | |
-| Attachments and screenshots           | ✅      | Rehosted to R2 so links don't expire |
+| Attachments and screenshots           | ✅      | Rehosted to R2 so links don't expire. No cleanup or per-server limits yet (see *Next up*) |
 | Report review / approval workflow     | ✅      | Optional triage channel |
+| Report types / label picker           | ✅      | Optional per-server list; the pick becomes an issue label |
+| Discussion thread per triage report   | ✅      | Started on each queued card; needs *Create Public Threads* |
+| See your open reports from anywhere   | ✅      | `/issues` with paging. Works in DMs and via user install |
 | Report status synchronisation         | ✅      | Closed / reopened via webhooks |
 | Update Discord when an issue is fixed | ✅      | Reporter DM + optional updates channel |
 
@@ -71,6 +74,17 @@ The core talks to code hosts only through `IssueProvider` (`src/providers/types.
 
 ---
 
+## 🌐 Website
+
+| Feature                                              | Status | Notes |
+| ---------------------------------------------------- | ------ | ----- |
+| Landing site                                         | ✅      | Astro, served by the Worker as static assets (`site/`) |
+| Link previews (Open Graph / Twitter, banner image)   | ✅      | |
+| GitHub sign-in pages share the site's design        | ✅      | Rendered into a hidden `/shell/` frame, with repository search |
+| Privacy policy and terms                             | ⬜      | Needed for Discord app verification at scale |
+
+---
+
 ## 🛠️ Discord Commands
 
 | Area                  | Progress |
@@ -87,11 +101,10 @@ The core talks to code hosts only through `IssueProvider` (`src/providers/types.
 
 ## 🧱 Next up
 
-* Duplicate detection: search open issues for similar titles before filing
+* Duplicate detection: search open issues for similar titles. Start by listing likely duplicates on the triage card and issue
+* Attachment storage: per-server and global size budgets, and purging files for rejected reports and for issues that stay closed (reopening resets the clock)
 * Per-server report templates (custom fields, e.g. "Game version")
 * Let reporters add follow-up comments or screenshots to their issue from Discord
-* Thread per report in the triage channel for staff discussion
-* Label picker in the report form (bug / crash / UI…)
 * GitLab provider
 * Public contributor leaderboard page
 

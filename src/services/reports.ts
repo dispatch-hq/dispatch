@@ -11,7 +11,7 @@ import { escapeMarkdown, isImage, issueBody, issueTitle, parseLabels, truncate }
 import { card, divider, notice, row, section, text, type Container } from '../lib/ui';
 import { getProvider, ProviderError, type CreatedIssue } from '../providers';
 import type { Bindings, GuildRow, LinkedGuild, ReportRow } from '../types';
-import { sendChannelMessage, sendDirectMessage } from './discord';
+import { sendChannelMessage, sendDirectMessage, startThread } from './discord';
 
 /* -------------------------------------------------------------------------- */
 /*                                    Cards                                   */
@@ -62,7 +62,8 @@ export function reportCard(report: ReportRow, error?: string): Container {
     .filter(Boolean)
     .join('\n\n');
 
-  const header = `## ${escapeMarkdown(truncate(report.title, 200))}\n-# Report #${report.id} · from <@${report.reporter_id}>`;
+  const type = report.report_type ? ` · ${escapeMarkdown(report.report_type)}` : '';
+  const header = `## ${escapeMarkdown(truncate(report.title, 200))}\n-# Report #${report.id} · from <@${report.reporter_id}>${type}`;
   const pending = report.status === 'pending';
 
   return card([
@@ -78,6 +79,11 @@ export function reportCard(report: ReportRow, error?: string): Container {
         makeButton('triage-reject', 'Reject', buttonStyle.Secondary).custom_value(String(report.id))
       ),
   ]);
+}
+
+/** Discord caps thread names at 100 characters and rejects line breaks. */
+export function threadName(report: Pick<ReportRow, 'id' | 'title'>): string {
+  return truncate(`Report #${report.id} · ${report.title.replace(/\s+/g, ' ').trim()}`, 100);
 }
 
 /** Compact confirmation shown to the reporter right after submitting. */
@@ -122,7 +128,8 @@ export async function publishReport(env: Bindings, guild: LinkedGuild, report: R
   const issue = await provider.createIssue(env, guild, {
     title: issueTitle(report),
     body: issueBody(report, parseAttachments(report), env.PUBLIC_URL),
-    labels: parseLabels(guild.labels),
+    // The server's base labels, plus the type the reporter picked (if any).
+    labels: [...new Set([...parseLabels(guild.labels), ...(report.report_type ? [report.report_type] : [])])],
   });
 
   await markPublished(env.DB, report.id, {
@@ -165,6 +172,9 @@ export async function submitReport(
     const messageId = await sendChannelMessage(env, guild.triage_channel_id, [reportCard(report)]);
     if (messageId) {
       await setTriageMessage(env.DB, report.id, guild.triage_channel_id, messageId);
+      // A thread per report keeps staff discussion out of the queue itself. Best
+      // effort, and off the critical path so the reporter's receipt isn't delayed.
+      ctx.waitUntil(startThread(env, guild.triage_channel_id, messageId, threadName(report)));
       return { kind: 'queued', report };
     }
     // Can't reach the triage channel (deleted, or missing permissions). Rather
