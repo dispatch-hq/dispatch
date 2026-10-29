@@ -21,12 +21,18 @@ import { deny, guarded, inGuild, messages } from './shared';
 /*                                    Modal                                   */
 /* -------------------------------------------------------------------------- */
 
+const DESCRIPTION_MIN = 10;
+
 function reportModal(prefill: { description?: string; source?: string } = {}) {
   const description = makeTextInput('description', undefined, textInputStyle.Paragraph)
     .placeholder('What went wrong? What did you expect to happen instead?')
-    .min_length(10)
+    .min_length(DESCRIPTION_MIN)
     .max_length(4000)
     .required(true);
+
+  // Discord rejects a modal whose prefilled value is shorter than min_length
+  // ("application didn't respond"), so short messages are left for the reporter to expand on.
+  const prefilled = prefill.description && prefill.description.length >= DESCRIPTION_MIN;
 
   const modal = makeModal('report', 'Report a bug', [
     makeLabel(
@@ -39,7 +45,7 @@ function reportModal(prefill: { description?: string; source?: string } = {}) {
     ),
     makeLabel(
       'What happened?',
-      prefill.description ? description.value(truncate(prefill.description, 4000)) : description
+      prefilled ? description.value(truncate(prefill.description!, 4000)) : description
     ),
     makeLabel(
       'Steps to reproduce',
