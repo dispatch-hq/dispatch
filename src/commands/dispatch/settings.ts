@@ -122,7 +122,7 @@ function settingsModal(guild: GuildRow | null) {
         .placeholder('Crash, UI, Performance, Other')
         .max_length(400)
         .required(false)
-    ).description(`Members pick one before the form opens, and it's added as an issue label. Up to ${MAX_REPORT_TYPES}. Leave empty to skip.`),
+    ).description(`Members pick one before the form opens; it becomes an issue label. Up to ${MAX_REPORT_TYPES}. Empty to skip.`),
     makeLabel(
       'Cooldown (seconds)',
       makeTextInput('cooldown').value(String(settings.cooldown_seconds)).min_length(1).max_length(4).required(true)

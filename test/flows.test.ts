@@ -321,6 +321,18 @@ describe('settings panel', () => {
     w.sqlite.prepare("UPDATE guilds SET labels = 'bug'").run();
   });
 
+  it('keeps modal labels and descriptions within Discord limits', async () => {
+    // Over-long strings are rejected the same way as empty values: "didn't respond in time".
+    const res = await w.interact({ type: 3, ...w.base(IDS.admin, true), data: { custom_id: 'settings-edit', component_type: 2 } });
+    const labels = res.json.data.components.filter((c: any) => c.type === 18);
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) {
+      expect(label.label.length).toBeLessThanOrEqual(45);
+      expect((label.description ?? '').length).toBeLessThanOrEqual(100);
+    }
+    expect(res.json.data.title.length).toBeLessThanOrEqual(45);
+  });
+
   it('validates the cooldown in the edit modal', async () => {
     const res = await w.interact({
       type: 5,
