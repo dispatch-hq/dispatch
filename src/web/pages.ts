@@ -1,103 +1,108 @@
 import { html, raw } from 'hono/html';
 import type { HtmlEscapedString } from 'hono/utils/html';
+import type { Bindings } from '../types';
 
 type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 
-const styles = raw(`
-  /* Same palette as the landing page in site/: dark grey with Portage accents. */
-  :root {
-    color-scheme: dark;
-    --bg: #151618; --card: #1c1d21; --text: #eeeef2; --muted: #9b9da8;
-    --border: #2a2c32; --brand: #8497fa; --brand-text: #121731; --danger: #ff7b86;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
-    background: var(--bg); color: var(--text);
-    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  }
-  main {
-    width: 100%; max-width: 480px; background: var(--card);
-    border: 1px solid var(--border); border-radius: 12px; padding: 28px;
-  }
-  .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--muted); font-size: 13px; margin-bottom: 16px; }
-  .brand img { width: 18px; height: 20px; }
-  h1 { font-size: 20px; margin: 0 0 8px; }
-  p { margin: 0 0 16px; color: var(--muted); }
-  p strong { color: var(--text); }
-  .repos { display: grid; gap: 8px; margin: 20px 0; }
-  .repos form { margin: 0; }
-  .repo {
-    width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border);
-    background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer;
-  }
-  .repo:hover, .repo:focus-visible { border-color: var(--brand); outline: none; }
-  .repo span { overflow-wrap: anywhere; }
-  .tag { font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; flex-shrink: 0; }
-  .button {
-    display: inline-block; padding: 10px 16px; border-radius: 8px; text-decoration: none;
-    background: var(--brand); color: var(--brand-text); font-weight: 600;
-  }
-  .secondary { color: var(--brand); text-decoration: none; font-weight: 500; }
-  .error h1 { color: var(--danger); }
-  footer { margin-top: 20px; font-size: 13px; color: var(--muted); }
-`);
+/** A page the Worker renders per request: a title and the content for the site's shell. */
+export type Page = { title: string; body: Html };
 
-const logo = raw(`<img src="/logo.svg" alt="" width="18" height="20" />`);
+/* -------------------------------------------------------------------------- */
+/*                                    Shell                                   */
+/* -------------------------------------------------------------------------- */
 
-function layout(title: string, body: Html, className = ''): Html {
-  return html`<!doctype html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="robots" content="noindex" />
-        <title>${title} · Dispatch</title>
-        <style>
-          ${styles}
-        </style>
-      </head>
-      <body>
-        <main class="${className}">
-          <div class="brand">${logo} Dispatch</div>
-          ${body}
-        </main>
-      </body>
-    </html>`;
+const TITLE_SLOT = '%%DISPATCH_TITLE%%';
+const CONTENT_SLOT = '%%DISPATCH_CONTENT%%';
+
+const escapeHtml = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Bare-bones page used if the site's shell can't be loaded (e.g. before the first site build). */
+function plainPage(title: string, content: string) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${escapeHtml(title)} · Dispatch</title></head><body style="margin:0;padding:48px 20px;background:#151618;color:#eeeef2;font:16px/1.6 system-ui,sans-serif"><main style="max-width:640px;margin:0 auto">${content}</main></body></html>`;
 }
 
-export function messagePage(title: string, message: string, error = false): Html {
-  return layout(title, html`<h1>${title}</h1><p>${message}</p>`, error ? 'error' : '');
+/**
+ * Renders a page inside the static site's frame (`site/src/pages/shell.astro`),
+ * so it shares the site's navigation, footer and styles. Falls back to a plain
+ * page rather than failing the sign-in flow.
+ */
+export async function renderPage(env: Bindings, requestUrl: string, page: Page): Promise<string> {
+  const content = (await page.body).toString();
+
+  try {
+    const res = await env.ASSETS.fetch(new URL('/shell/', requestUrl));
+    const shell = res.ok ? await res.text() : '';
+    if (shell.includes(CONTENT_SLOT)) {
+      // Replacer functions, so `$` in user-visible text is never treated as a pattern.
+      return shell.replace(TITLE_SLOT, () => escapeHtml(page.title)).replace(CONTENT_SLOT, () => content);
+    }
+  } catch (error) {
+    console.error('shell unavailable', error);
+  }
+  return plainPage(page.title, content);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    Pages                                   */
+/* -------------------------------------------------------------------------- */
+
+type Kind = 'info' | 'error' | 'success';
+
+const LABELS: Record<Kind, string> = {
+  info: 'Dispatch',
+  error: 'Something went wrong',
+  success: 'All set',
+};
+
+export function messagePage(title: string, message: string, kind: Kind = 'info'): Page {
+  const action =
+    kind === 'success'
+      ? html`<a class="button large" href="https://discord.com/app">Open Discord <span aria-hidden="true">→</span></a>`
+      : html`<a class="button large ghost" href="/">Back to home</a>`;
+
+  return {
+    title,
+    body: html`<span class="index ${kind}">${LABELS[kind]}</span>
+      <h1 class="panel-title">${title}</h1>
+      <p class="lede">${message}</p>
+      <div class="cta">${action}</div>`,
+  };
 }
 
 export type RepoChoice = { fullName: string; private: boolean; token: string };
 
-export function repoPickerPage(opts: { login: string; repos: RepoChoice[]; installUrl: string }): Html {
+export function repoPickerPage(opts: { login: string; repos: RepoChoice[]; installUrl: string }): Page {
   const list = opts.repos.length
     ? html`<div class="repos">
         ${opts.repos.map(
           (r) => html`<form method="post" action="/github/link">
             <input type="hidden" name="token" value="${r.token}" />
             <button class="repo" type="submit">
-              <span>${r.fullName}</span>${r.private ? html`<span class="tag">private</span>` : ''}
+              <span class="repo-name">${r.fullName}</span>
+              <span class="repo-meta">${r.private ? html`<span class="chip">Private</span>` : ''}<span aria-hidden="true">→</span></span>
             </button>
           </form>`
         )}
       </div>`
-    : html`<p>
+    : html`<p class="lede">
         Dispatch isn't installed on any repository you can push to yet. Install it first, then you'll be
         brought straight back here.
       </p>`;
 
-  return layout(
-    'Choose a repository',
-    html`<h1>Choose a repository</h1>
-      <p>Signed in as <strong>@${opts.login}</strong>. Bug reports from your server will be filed as issues here.</p>
+  return {
+    title: 'Choose a repository',
+    body: html`<span class="index">Connect a repository</span>
+      <h1 class="panel-title">Choose a <em>repository.</em></h1>
+      <p class="lede">
+        Signed in as <strong>@${opts.login}</strong>. Bug reports from your server will be filed as issues there.
+      </p>
       ${list}
-      <a class="${opts.repos.length ? 'secondary' : 'button'}" href="${opts.installUrl}">
-        ${opts.repos.length ? 'Install on another repository →' : 'Install the GitHub App'}
-      </a>
-      <footer>Only repositories where the app is installed and you have write access are shown.</footer>`
-  );
+      <div class="cta">
+        <a class="button ${opts.repos.length ? 'ghost' : ''}" href="${opts.installUrl}">
+          ${opts.repos.length ? 'Install on another repository' : 'Install the GitHub App'}
+        </a>
+      </div>
+      <p class="command-note">Only repositories where the app is installed and you have write access are shown.</p>`,
+  };
 }

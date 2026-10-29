@@ -1,0 +1,19 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<!--
+  Frame for pages the Worker renders per request (the GitHub sign-in and
+  repository picker). The Worker fetches /shell/ and swaps the two placeholders
+  below for the page's title and content (see src/web/pages.ts), so these pages
+  always share the site's navigation, footer and styles. Not indexed.
+-->
+<Base title="%%DISPATCH_TITLE%% · Dispatch" noindex>
+  <main>
+    <div class="hero-bg">
+      <div class="wrap page">
+        <div class="panel">%%DISPATCH_CONTENT%%</div>
+      </div>
+    </div>
+  </main>
+</Base>

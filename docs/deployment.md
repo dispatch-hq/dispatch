@@ -81,7 +81,7 @@ npm run prod:deploy
 npm run prod:register   # reads DISCORD_APPLICATION_ID / DISCORD_TOKEN from .env
 ```
 
-The deploy scripts also build the landing page (`site/`, an [Astro](https://astro.build) project) and upload it with the Worker as static assets. Edit the page in `site/src/pages/index.astro` and its styles in `site/src/styles/global.css`; preview with `npm run site:dev`. The site's *Add to Discord* buttons link to `/invite`, which the Worker redirects to the correct Discord invite for that environment.
+`wrangler deploy` and `wrangler dev` also build the landing page (`site/`, an [Astro](https://astro.build) project) via the `build.command` in `wrangler.jsonc`, and upload it with the Worker as static assets. That is what makes Git-triggered builds (Cloudflare Workers Builds) work from a fresh clone, where `site/dist` doesn't exist; no dashboard build command is needed. Edit the page in `site/src/pages/index.astro` and its styles in `site/src/styles/global.css`; preview with `npm run site:dev`. The site's *Add to Discord* buttons link to `/invite`, which the Worker redirects to the correct Discord invite for that environment.
 
 Re-run `prod:register` whenever command definitions change. While developing, set `DISCORD_GUILD_ID` in `.dev.vars` and run `npm run beta:register` to register to one server instantly.
 

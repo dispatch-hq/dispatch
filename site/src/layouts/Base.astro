@@ -11,6 +11,8 @@ interface Props {
   description?: string;
   /** Path of the page, used for the canonical URL. */
   path?: string;
+  /** Keep the page out of search results and skip the social-preview tags. */
+  noindex?: boolean;
 }
 
 const siteName = 'Dispatch';
@@ -18,6 +20,7 @@ const {
   title = 'Dispatch — Discord bug reports, straight to GitHub',
   description = 'Dispatch turns /report in Discord into GitHub issues. Triage with a button, keep reporters posted, and reward your best bug hunters with roles.',
   path = Astro.url.pathname,
+  noindex = false,
 } = Astro.props;
 
 const canonical = new URL(path, Astro.site).href;
@@ -44,6 +47,10 @@ const structuredData = {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {noindex ? (
+      <meta name="robots" content="noindex, nofollow" />
+    ) : (
+      <>
     <link rel="canonical" href={canonical} />
     <meta name="robots" content="index, follow, max-image-preview:large" />
 
@@ -66,6 +73,8 @@ const structuredData = {
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
     <meta name="twitter:image:alt" content={imageAlt} />
+      </>
+    )}
 
     <!-- Discord uses theme-color as the accent stripe on the embed. -->
     <meta name="theme-color" content="#8497fa" />
@@ -74,7 +83,7 @@ const structuredData = {
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="sitemap" href="/sitemap.xml" />
-    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+    {!noindex && <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />}
   </head>
   <body>
     <header class="nav">

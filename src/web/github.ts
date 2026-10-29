@@ -1,4 +1,5 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { LinkState } from '../commands/dispatch/setup';
 import { LINK_TTL_SECONDS } from '../commands/dispatch/setup';
 import { linkRepository } from '../db';
@@ -9,7 +10,7 @@ import { exchangeOAuthCode, githubAuthorizeUrl, githubInstallUrl, listWritableRe
 import { sendDirectMessage } from '../services/discord';
 import { handleGitHubEvent } from '../services/github-events';
 import type { AppEnv } from '../types';
-import { messagePage, repoPickerPage } from './pages';
+import { messagePage, renderPage, repoPickerPage, type Page } from './pages';
 
 /** A single repository the admin proved they can push to. */
 type RepoGrant = LinkState & {
@@ -26,7 +27,13 @@ const MAX_REPOS = 200;
 export const githubRoutes = new Hono<AppEnv>();
 
 const expired = () =>
-  messagePage('Link expired', 'This link has expired or was already used. Run /dispatch setup in Discord to get a new one.', true);
+  messagePage('Link expired', 'This link has expired or was already used. Run /dispatch setup in Discord to get a new one.', 'error');
+
+/** These pages carry single-use tokens, so they must never be cached. */
+async function respond(c: Context<AppEnv>, page: Page, status: ContentfulStatusCode = 200) {
+  c.header('cache-control', 'no-store');
+  return c.html(await renderPage(c.env, c.req.url, page), status);
+}
 
 /**
  * OAuth + install redirect target. GitHub sends `code` after sign-in, and
@@ -36,10 +43,11 @@ const expired = () =>
 githubRoutes.get('/callback', async (c) => {
   const { code, state, setup_action } = c.req.query();
   const claims = await verifyToken<LinkState>(c.env.STATE_SECRET, state);
-  if (!claims || !state) return c.html(expired(), 400);
+  if (!claims || !state) return respond(c, expired(), 400);
 
   if (setup_action === 'request') {
-    return c.html(
+    return respond(
+      c,
       messagePage(
         'Waiting for approval',
         'An organization owner needs to approve the Dispatch installation. Once they do, run /dispatch setup again.'
@@ -66,21 +74,21 @@ githubRoutes.get('/callback', async (c) => {
       }))
     );
 
-    return c.html(repoPickerPage({ login: user.login, repos: choices, installUrl: githubInstallUrl(c.env, state) }));
+    return respond(c, repoPickerPage({ login: user.login, repos: choices, installUrl: githubInstallUrl(c.env, state) }));
   } catch (error) {
     console.error('github callback failed', error);
     const detail =
       error instanceof ProviderError && error.status === 401
         ? 'GitHub rejected the sign-in. Please try again from Discord.'
         : 'Something went wrong talking to GitHub. Please try again from Discord.';
-    return c.html(messagePage('Sign-in failed', detail, true), 502);
+    return respond(c, messagePage('Sign-in failed', detail, 'error'), 502);
   }
 });
 
 githubRoutes.post('/link', async (c) => {
   const form = await c.req.parseBody();
   const grant = await verifyToken<RepoGrant>(c.env.STATE_SECRET, String(form.token ?? ''));
-  if (!grant) return c.html(expired(), 400);
+  if (!grant) return respond(c, expired(), 400);
 
   await linkRepository(c.env.DB, {
     guildId: grant.g,
@@ -99,8 +107,9 @@ githubRoutes.post('/link', async (c) => {
     ])
   );
 
-  return c.html(
-    messagePage('Repository connected', `Bug reports will be filed in ${grant.n}. You can close this tab and head back to Discord.`)
+  return respond(
+    c,
+    messagePage('Repository connected', `Bug reports will be filed in ${grant.n}. You can close this tab and head back to Discord.`, 'success')
   );
 });
 

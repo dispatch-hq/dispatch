@@ -547,6 +547,33 @@ describe('rewards and GitHub webhooks', () => {
 });
 
 describe('web', () => {
+  it('renders sign-in pages inside the static site shell, uncached', async () => {
+    const original = w.env.ASSETS;
+    const requested: string[] = [];
+    w.env.ASSETS = {
+      fetch: async (input: Request | URL | string) => {
+        requested.push(String(input instanceof Request ? input.url : input));
+        return new Response('<title>%%DISPATCH_TITLE%% · Dispatch</title><nav>site nav</nav><div>%%DISPATCH_CONTENT%%</div>', {
+          headers: { 'content-type': 'text/html' },
+        });
+      },
+    } as unknown as Fetcher;
+
+    try {
+      const res = await w.request('/github/callback?code=x&state=forged');
+      const page = await res.text();
+      expect(res.status).toBe(400);
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      expect(requested[0]).toMatch(/\/shell\/$/);
+      expect(page).toContain('<nav>site nav</nav>');
+      expect(page).toContain('<title>Link expired · Dispatch</title>');
+      expect(page).toContain('Run /dispatch setup in Discord');
+      expect(page).not.toContain('%%DISPATCH');
+    } finally {
+      w.env.ASSETS = original;
+    }
+  });
+
   it('hands GET / to the static site', async () => {
     const res = await w.request('/');
     expect(res.status).toBe(200);

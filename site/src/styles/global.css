@@ -804,6 +804,109 @@ h2 {
   }
 }
 
+/* Worker-rendered pages (sign-in, repository picker) ---------------------- */
+
+.page {
+  display: flex;
+  align-items: flex-start;
+  min-height: 60vh;
+  padding-top: 88px;
+  padding-bottom: 120px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 680px;
+  padding: 48px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow:
+    12px 12px 0 var(--navy),
+    12px 12px 0 1px var(--navy-line);
+  animation: rise 0.6s var(--ease) both;
+}
+
+@media (max-width: 600px) {
+  .panel {
+    padding: 28px 22px;
+    box-shadow: none;
+  }
+}
+
+.panel .index.error {
+  color: #ff7b86;
+}
+
+.panel-title {
+  font-size: clamp(34px, 5vw, 52px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin-bottom: 20px;
+}
+
+.panel .lede {
+  font-size: 17px;
+  margin-bottom: 32px;
+}
+
+.panel .lede strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.repos {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.repos form {
+  margin: 0;
+}
+
+.repo {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font: 500 15px var(--font-mono);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.repo:hover,
+.repo:focus-visible {
+  background: var(--surface-hover);
+  border-color: var(--brand);
+  outline: none;
+}
+
+.repo-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.repo-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  color: var(--brand);
+}
+
+.panel .command-note {
+  margin-top: 28px;
+}
+
 /* Final call to action ---------------------------------------------------- */
 
 .final {
