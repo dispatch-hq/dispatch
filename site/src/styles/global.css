@@ -794,6 +794,61 @@ h2 {
   color: var(--muted);
 }
 
+.command-note a {
+  color: var(--brand);
+}
+
+/* Reassurance line under a call to action. */
+.assure {
+  margin: 20px 0 0;
+  font: 400 11px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.assure a {
+  color: var(--brand);
+}
+
+.assure code {
+  font-size: inherit;
+}
+
+/* Short supporting bullets inside a cell. */
+.points {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 10px;
+}
+
+.points li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+.points li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 7px;
+  height: 1px;
+  background: var(--brand);
+}
+
+.points b {
+  color: var(--text);
+  font-weight: 500;
+}
+
 @media (max-width: 520px) {
   .command-top {
     flex-wrap: wrap;
@@ -1113,6 +1168,40 @@ footer {
 .footer-mark em {
   font-style: italic;
   color: var(--brand);
+}
+
+.footer-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+  padding-bottom: 40px;
+}
+
+.footer-cols h4 {
+  margin: 0 0 14px;
+  font: 500 11px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.footer-cols a {
+  display: block;
+  padding: 4px 0;
+  font-size: 14px;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+
+.footer-cols a:hover,
+.footer-cols a:focus-visible {
+  color: var(--brand);
+}
+
+@media (max-width: 520px) {
+  .footer-cols {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .footer-row {

@@ -16,50 +16,72 @@ const steps = [
   },
 ];
 
-const features = [
+const outcomes = [
   {
-    title: 'Triage queue',
-    body: 'Send new reports to a private channel where staff approve or reject them with a button. Rejections can include a reason.',
+    title: 'Reports developers can actually use',
+    body: 'Members fill in a short form with steps to reproduce and environment, and attach screenshots or logs. Uploads are copied off Discord so they never expire from the issue.',
+    points: ['Optional report types become issue labels', 'Right-click any message to report it'],
   },
   {
-    title: 'Stays in the loop',
-    body: 'Reporters get a DM when their report is approved, when a maintainer comments, and when it is fixed.',
+    title: 'From community feedback to tracked issues',
+    body: 'Send reports to a private triage channel where staff approve or reject them with a button, each with its own thread. Approved reports become GitHub issues in the repository you connect.',
+    points: ['Triage is optional: skip it and issues are filed immediately', 'Per-member cooldowns keep spam out'],
   },
   {
-    title: 'Reward reporters',
-    body: 'Hand out roles once a member has enough fixed reports. Reopen an issue and the credit is taken back.',
-  },
-  {
-    title: 'Attachments rehosted',
-    body: 'Screenshots and logs are copied off Discord so they never expire from the issue.',
-  },
-  {
-    title: 'Check anywhere',
-    body: 'Run /issues in any server or in DMs to see your open reports across every server using Dispatch.',
-  },
-  {
-    title: 'Scoped and rate-limited',
-    body: 'Per-member cooldowns, and Dispatch only touches the repository you connect.',
+    title: 'A community that stays involved',
+    body: 'Reporters get a DM when their report is approved, answered by a maintainer, or fixed. Hand out roles once a member has enough fixed reports.',
+    points: ['/issues shows your open reports in every server, even in DMs', '/stats and /leaderboard keep it friendly'],
   },
 ];
+
+const trust = [
+  {
+    title: 'Permissions',
+    body: 'Only what the features above need.',
+    points: [
+      '<b>GitHub App:</b> Issues (read and write), Metadata (read-only). Webhooks for issue, comment and repository events.',
+      '<b>Discord:</b> View Channel, Send Messages, Embed Links, Create Public Threads and Manage Roles (for reward roles). No message content access.',
+    ],
+  },
+  {
+    title: 'Repository scope',
+    body: 'Dispatch touches one repository per server.',
+    points: [
+      'Each request uses a short-lived GitHub token scoped to the single linked repository.',
+      'To link a repo, an admin signs in with GitHub and must have push access to it, so nobody can point reports at a repository they do not control.',
+    ],
+  },
+  {
+    title: 'Your data',
+    body: 'What is stored, and what is public.',
+    points: [
+      'Reports (text, reporter Discord ID and username) and server settings are stored in Cloudflare D1.',
+      "Attachments are stored in Cloudflare R2 and are public to anyone with the link. Issues include the reporter's Discord username.",
+      'Nothing is deleted automatically yet. Admins can unlink a repository at any time with /dispatch disconnect.',
+    ],
+  },
+];
+
+
 
 const categories = ['Reporting', 'Community', 'Setup', 'Rewards'];
 
 // `admin` commands need the Manage Server permission.
 const commands = [
-  { name: 'report', icon: '/', category: 'Reporting', desc: 'Report a bug to the developers. Opens a form with steps, environment and attachments.' },
-  { name: 'Apps → Report bug', icon: '↗', category: 'Reporting', desc: 'Right-click any message to report it, with its text pre-filled.' },
-  { name: 'issues', icon: '/', category: 'Reporting', desc: 'Your open reports across every server using Dispatch. Works in DMs too.' },
+  { name: 'report', icon: '/', category: 'Reporting', key: true, desc: 'Report a bug to the developers. Opens a form with steps, environment and attachments.' },
+  { name: 'Apps → Report bug', icon: '↗', category: 'Reporting', menu: true, desc: 'Right-click any message to report it, with its text pre-filled.' },
+  { name: 'issues', icon: '/', category: 'Reporting', key: true, desc: 'Your open reports across every server using Dispatch. Works in DMs too.' },
   { name: 'stats', icon: '/', category: 'Community', desc: 'Report counts and reward progress for you or another member.' },
   { name: 'leaderboard', icon: '/', category: 'Community', desc: 'The top bug reporters in this server.' },
-  { name: 'dispatch setup', icon: '/', category: 'Setup', admin: true, desc: 'Connect a GitHub repository to this server.' },
-  { name: 'dispatch settings', icon: '/', category: 'Setup', admin: true, desc: 'Triage queue, updates channel, staff role, labels and cooldown.' },
+  { name: 'dispatch setup', icon: '/', category: 'Setup', admin: true, key: true, desc: 'Connect a GitHub repository to this server.' },
+  { name: 'dispatch settings', icon: '/', category: 'Setup', admin: true, key: true, desc: 'Triage queue, updates channel, staff role, labels and cooldown.' },
   { name: 'dispatch disconnect', icon: '/', category: 'Setup', admin: true, desc: 'Unlink the connected repository.' },
   { name: 'dispatch rewards add', icon: '/', category: 'Rewards', admin: true, desc: 'Grant a role once a member has enough fixed bug reports.' },
   { name: 'dispatch rewards remove', icon: '/', category: 'Rewards', admin: true, desc: 'Stop granting a reward role.' },
   { name: 'dispatch rewards list', icon: '/', category: 'Rewards', admin: true, desc: 'Show every reward role and its threshold.' },
 ];
 
+const keyCommands = commands.filter((c) => c.key).length;
 const count = (category: string) => commands.filter((c) => c.category === category).length;
 
 const pipeline = ['Report', 'Triage', 'Issue', 'Fixed', 'Reward'];
@@ -76,13 +98,14 @@ const pad = (n: number) => String(n).padStart(2, '0');
             Bug reports from Discord, <em>straight to GitHub.</em>
           </h1>
           <p class="lede">
-            Members report bugs with <code>/report</code>. Dispatch files the issue, keeps them posted until it is
-            fixed, and rewards your best reporters with roles.
+            Turn community feedback into actionable GitHub issues. Dispatch collects reports, routes them through
+            triage if you want it, and keeps reporters updated from submission to fix.
           </p>
           <div class="cta">
             <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
             <a class="button large ghost" href="#how">How it works</a>
           </div>
+          <p class="assure">Access limited to one repository · <a href="#trust">See exactly what it can do</a></p>
         </div>
 
         <div class="carousel" role="region" aria-roledescription="carousel" aria-label="Example commands" tabindex="0">
@@ -229,27 +252,57 @@ const pad = (n: number) => String(n).padStart(2, '0');
       <div class="wrap">
         <div class="section-head">
           <span class="index">02 — Features</span>
-          <h2>Everything a bug pipeline needs, <em>nothing it doesn't.</em></h2>
+          <h2>More than a bug-report button. <em>The whole feedback loop.</em></h2>
         </div>
         <div class="cells three">
-          {features.map((feature) => (
+          {outcomes.map((outcome) => (
             <div class="cell">
-              <h3>{feature.title}</h3>
-              <p>{feature.body}</p>
+              <h3>{outcome.title}</h3>
+              <p>{outcome.body}</p>
+              <ul class="points">
+                {outcome.points.map((point) => <li>{point}</li>)}
+              </ul>
             </div>
           ))}
         </div>
       </div>
     </section>
 
+    <section id="trust">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="index">03 — Trust</span>
+          <h2>Know what you are <em>connecting.</em></h2>
+        </div>
+        <div class="cells three">
+          {trust.map((item) => (
+            <div class="cell">
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+              <ul class="points">
+                {item.points.map((point) => <li set:html={point} />)}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p class="command-note">
+          The source is on <a href="https://github.com/dispatch-hq/dispatch" target="_blank" rel="noopener noreferrer">GitHub</a>. Found a problem with Dispatch itself?
+          <a href="https://github.com/dispatch-hq/dispatch/issues" target="_blank" rel="noopener noreferrer">Open an issue</a>.
+        </p>
+      </div>
+    </section>
+
     <section id="commands">
       <div class="wrap">
         <div class="section-head">
-          <span class="index">03 — Commands</span>
+          <span class="index">04 — Commands</span>
           <h2>A handful of <em>slash commands.</em></h2>
         </div>
         <div class="filters" role="group" aria-label="Filter commands">
-          <button type="button" class="filter is-active" data-filter="all" aria-pressed="true">
+          <button type="button" class="filter is-active" data-filter="key" aria-pressed="true">
+            Key <b>{keyCommands}</b>
+          </button>
+          <button type="button" class="filter" data-filter="all" aria-pressed="false">
             All <b>{commands.length}</b>
           </button>
           {categories.map((category) => (
@@ -260,28 +313,29 @@ const pad = (n: number) => String(n).padStart(2, '0');
         </div>
         <div class="command-grid">
           {commands.map((c) => (
-            <article class="command-card" data-category={c.category}>
+            <article class="command-card" data-category={c.category} data-key={c.key ? 'true' : undefined} hidden={!c.key}>
               <div class="command-top">
                 <span class="command-icon" aria-hidden="true">{c.icon}</span>
                 <h3>{c.name}</h3>
                 <span class="command-tags">
                   {c.admin && <span class="chip admin">Admin</span>}
-                  <span class="chip">{c.category}</span>
+                  <span class="chip">{c.menu ? 'Message menu' : c.category}</span>
                 </span>
               </div>
               <p>{c.desc}</p>
             </article>
           ))}
         </div>
-        <p class="command-note">Admin commands need the Manage Server permission.</p>
+        <p class="command-note">Admin commands need the Manage Server permission. “Message menu” items are in a message's Apps menu, not typed.</p>
       </div>
     </section>
 
     <section class="final">
       <div class="wrap">
         <h2>Ready when <em>you are.</em></h2>
-        <p class="lede">Add Dispatch to your server and connect a repository.</p>
+        <p class="lede">Add Dispatch to your server, connect a GitHub repository and start collecting structured bug reports.</p>
         <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
+        <p class="assure">Setup takes one command: <code>/dispatch setup</code> · Access limited to one repository</p>
       </div>
     </section>
   </main>
@@ -347,7 +401,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
         f.setAttribute('aria-pressed', String(active));
       });
       cards.forEach((card) => {
-        card.hidden = selected !== 'all' && card.dataset.category !== selected;
+        card.hidden =
+          selected === 'key' ? card.dataset.key !== 'true' : selected !== 'all' && card.dataset.category !== selected;
       });
     })
   );
