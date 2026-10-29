@@ -255,6 +255,23 @@ describe('reporting a bug directly', () => {
     expect(res.json.data.custom_id).toBe(`report;${IDS.channel}:900`);
     expect(JSON.stringify(res.json.data)).toContain('the login button does nothing');
   });
+
+  it("doesn't pre-fill messages shorter than the description minimum", async () => {
+    const res = await w.interact({
+      type: 2,
+      ...w.base(IDS.member),
+      data: {
+        id: 'c',
+        name: 'Report bug',
+        type: 3,
+        target_id: '901',
+        resolved: { messages: { '901': { id: '901', channel_id: IDS.channel, content: 'old' } } },
+      },
+    });
+    expect(res.json.type).toBe(9);
+    expect(res.json.data.custom_id).toBe(`report;${IDS.channel}:901`);
+    expect(JSON.stringify(res.json.data)).not.toContain('"value":"old"');
+  });
 });
 
 describe('settings panel', () => {
@@ -530,9 +547,17 @@ describe('rewards and GitHub webhooks', () => {
 });
 
 describe('web', () => {
-  it('serves a landing page with an invite link', async () => {
-    const page = await (await w.request('/')).text();
-    expect(page).toContain(`client_id=${IDS.app}`);
-    expect(page).toContain('scope=bot+applications.commands');
+  it('hands GET / to the static site', async () => {
+    const res = await w.request('/');
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('site');
+  });
+
+  it('redirects /invite to the Discord authorize page', async () => {
+    const res = await w.request('/invite');
+    expect(res.status).toBe(302);
+    const location = res.headers.get('location')!;
+    expect(location).toContain(`client_id=${IDS.app}`);
+    expect(location).toContain('scope=bot+applications.commands');
   });
 });

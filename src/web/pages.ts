@@ -4,15 +4,11 @@ import type { HtmlEscapedString } from 'hono/utils/html';
 type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 
 const styles = raw(`
+  /* Same palette as the landing page in site/: dark grey with Portage accents. */
   :root {
-    --bg: #f6f7f9; --card: #ffffff; --text: #1f2328; --muted: #59636e;
-    --border: #d1d9e0; --brand: #5865f2; --brand-text: #ffffff; --danger: #d1242f;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0d1117; --card: #161b22; --text: #e6edf3; --muted: #9198a1;
-      --border: #30363d; --brand: #6d78f7; --danger: #f85149;
-    }
+    color-scheme: dark;
+    --bg: #151618; --card: #1c1d21; --text: #eeeef2; --muted: #9b9da8;
+    --border: #2a2c32; --brand: #8497fa; --brand-text: #121731; --danger: #ff7b86;
   }
   * { box-sizing: border-box; }
   body {
@@ -25,7 +21,7 @@ const styles = raw(`
     border: 1px solid var(--border); border-radius: 12px; padding: 28px;
   }
   .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--muted); font-size: 13px; margin-bottom: 16px; }
-  .brand svg { width: 18px; height: 18px; color: var(--brand); }
+  .brand img { width: 18px; height: 20px; }
   h1 { font-size: 20px; margin: 0 0 8px; }
   p { margin: 0 0 16px; color: var(--muted); }
   p strong { color: var(--text); }
@@ -48,9 +44,7 @@ const styles = raw(`
   footer { margin-top: 20px; font-size: 13px; color: var(--muted); }
 `);
 
-const logo = raw(
-  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>`
-);
+const logo = raw(`<img src="/logo.svg" alt="" width="18" height="20" />`);
 
 function layout(title: string, body: Html, className = ''): Html {
   return html`<!doctype html>
@@ -75,18 +69,6 @@ function layout(title: string, body: Html, className = ''): Html {
 
 export function messagePage(title: string, message: string, error = false): Html {
   return layout(title, html`<h1>${title}</h1><p>${message}</p>`, error ? 'error' : '');
-}
-
-export function landingPage(inviteUrl: string): Html {
-  return layout(
-    'Bug reports from Discord',
-    html`<h1>Bug reports from Discord, straight to GitHub</h1>
-      <p>
-        Members report bugs with <strong>/report</strong> — Dispatch files a GitHub issue, keeps them posted
-        as it's triaged and fixed, and rewards your best reporters with roles.
-      </p>
-      <a class="button" href="${inviteUrl}">Add to Discord</a>`
-  );
 }
 
 export type RepoChoice = { fullName: string; private: boolean; token: string };

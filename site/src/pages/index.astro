@@ -1,0 +1,354 @@
+---
+import Base from '../layouts/Base.astro';
+
+const steps = [
+  {
+    title: 'Connect a repository',
+    body: 'An admin runs /dispatch setup, installs the GitHub App and picks the repo. Dispatch checks they have write access.',
+  },
+  {
+    title: 'Members report bugs',
+    body: 'Anyone can use /report, or right-click a message and choose Apps → Report bug. Screenshots and logs come along.',
+  },
+  {
+    title: 'Approve, file, close the loop',
+    body: 'Optionally route reports through a triage channel first. Approved reports become GitHub issues automatically.',
+  },
+];
+
+const features = [
+  {
+    title: 'Triage queue',
+    body: 'Send new reports to a private channel where staff approve or reject them with a button. Rejections can include a reason.',
+  },
+  {
+    title: 'Stays in the loop',
+    body: 'Reporters get a DM when their report is approved, when a maintainer comments, and when it is fixed.',
+  },
+  {
+    title: 'Reward reporters',
+    body: 'Hand out roles once a member has enough fixed reports. Reopen an issue and the credit is taken back.',
+  },
+  {
+    title: 'Attachments rehosted',
+    body: 'Screenshots and logs are copied off Discord so they never expire from the issue.',
+  },
+  {
+    title: 'Check anywhere',
+    body: 'Run /issues in any server or in DMs to see your open reports across every server using Dispatch.',
+  },
+  {
+    title: 'Scoped and rate-limited',
+    body: 'Per-member cooldowns, and Dispatch only touches the repository you connect.',
+  },
+];
+
+const categories = ['Reporting', 'Community', 'Setup', 'Rewards'];
+
+// `admin` commands need the Manage Server permission.
+const commands = [
+  { name: 'report', icon: '/', category: 'Reporting', desc: 'Report a bug to the developers. Opens a form with steps, environment and attachments.' },
+  { name: 'Apps → Report bug', icon: '↗', category: 'Reporting', desc: 'Right-click any message to report it, with its text pre-filled.' },
+  { name: 'issues', icon: '/', category: 'Reporting', desc: 'Your open reports across every server using Dispatch. Works in DMs too.' },
+  { name: 'stats', icon: '/', category: 'Community', desc: 'Report counts and reward progress for you or another member.' },
+  { name: 'leaderboard', icon: '/', category: 'Community', desc: 'The top bug reporters in this server.' },
+  { name: 'dispatch setup', icon: '/', category: 'Setup', admin: true, desc: 'Connect a GitHub repository to this server.' },
+  { name: 'dispatch settings', icon: '/', category: 'Setup', admin: true, desc: 'Triage queue, updates channel, staff role, labels and cooldown.' },
+  { name: 'dispatch disconnect', icon: '/', category: 'Setup', admin: true, desc: 'Unlink the connected repository.' },
+  { name: 'dispatch rewards add', icon: '/', category: 'Rewards', admin: true, desc: 'Grant a role once a member has enough fixed bug reports.' },
+  { name: 'dispatch rewards remove', icon: '/', category: 'Rewards', admin: true, desc: 'Stop granting a reward role.' },
+  { name: 'dispatch rewards list', icon: '/', category: 'Rewards', admin: true, desc: 'Show every reward role and its threshold.' },
+];
+
+const count = (category: string) => commands.filter((c) => c.category === category).length;
+
+const pipeline = ['Report', 'Triage', 'Issue', 'Fixed', 'Reward'];
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+
+<Base>
+  <main>
+    <div class="hero-bg">
+      <div class="wrap hero">
+        <div class="hero-copy">
+          <span class="tag">Discord → GitHub</span>
+          <h1>
+            Bug reports from Discord, <em>straight to GitHub.</em>
+          </h1>
+          <p class="lede">
+            Members report bugs with <code>/report</code>. Dispatch files the issue, keeps them posted until it is
+            fixed, and rewards your best reporters with roles.
+          </p>
+          <div class="cta">
+            <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
+            <a class="button large ghost" href="#how">How it works</a>
+          </div>
+        </div>
+
+        <div class="carousel" role="region" aria-roledescription="carousel" aria-label="Example commands" tabindex="0">
+          <div class="discord">
+            <div class="slides">
+              <div class="slide is-active" aria-label="/report">
+                <p class="cmd"><b>mara</b> used <b>/report</b></p>
+                <div class="d-card">
+                  <h4>Crash when opening settings</h4>
+                  <small>Report #42 · from <span class="d-mention">@mara</span></small>
+                  <p>The app closes immediately after tapping the gear icon on Android 15.</p>
+                  <div class="d-actions">
+                    <span class="d-btn primary">Approve</span>
+                    <span class="d-btn">Reject</span>
+                  </div>
+                </div>
+                <div class="d-card">
+                  <div class="d-row">
+                    <div>
+                      <h4>Fixed · acme/app#128</h4>
+                      <small>Thanks <span class="d-mention">@mara</span> — closed as completed</small>
+                    </div>
+                    <span class="d-btn">View issue</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="slide" aria-label="/issues">
+                <p class="cmd"><b>mara</b> used <b>/issues</b> · <i>only visible to you</i></p>
+                <div class="d-card">
+                  <h4>Your active issues</h4>
+                  <small>3 open across servers using Dispatch</small>
+                </div>
+                <div class="d-card">
+                  <div class="d-row">
+                    <div>
+                      <h4>Crash when opening settings</h4>
+                      <small>acme/app#128 · filed 2 days ago</small>
+                    </div>
+                    <span class="d-btn">View</span>
+                  </div>
+                  <div class="d-row d-gap">
+                    <div>
+                      <h4>Dark mode flickers on launch</h4>
+                      <small>acme/app#131 · filed 5 days ago</small>
+                    </div>
+                    <span class="d-btn">View</span>
+                  </div>
+                  <div class="d-row d-gap">
+                    <div>
+                      <h4>Export fails over 10 MB</h4>
+                      <small>studio/render#57 · filed last week</small>
+                    </div>
+                    <span class="d-btn">View</span>
+                  </div>
+                  <div class="d-actions">
+                    <span class="d-btn off">Previous</span>
+                    <span class="d-btn off">Next</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="slide" aria-label="/stats">
+                <p class="cmd"><b>mara</b> used <b>/stats</b></p>
+                <div class="d-card">
+                  <h4>Bug reports</h4>
+                  <small><span class="d-mention">@mara</span></small>
+                  <p><b>3</b> fixed · <b>5</b> filed · <b>1</b> awaiting review · <b>0</b> rejected</p>
+                  <p>Rewards: <span class="d-mention">@Bug Hunter</span></p>
+                  <p>Next: <span class="d-mention">@Exterminator</span> in <b>2</b> more fixed reports</p>
+                </div>
+              </div>
+
+              <div class="slide" aria-label="/leaderboard">
+                <p class="cmd"><b>jules</b> used <b>/leaderboard</b></p>
+                <div class="d-card">
+                  <h4>Top bug reporters</h4>
+                  <p><b>1.</b> <span class="d-mention">@mara</span> — <b>12</b> fixed</p>
+                  <p><b>2.</b> <span class="d-mention">@kenji</span> — <b>9</b> fixed</p>
+                  <p><b>3.</b> <span class="d-mention">@priya</span> — <b>7</b> fixed</p>
+                  <p><b>4.</b> <span class="d-mention">@jules</span> — <b>4</b> fixed</p>
+                </div>
+              </div>
+
+              <div class="slide" aria-label="Updates channel">
+                <p class="cmd">in <b>#updates</b></p>
+                <div class="d-card">
+                  <p>New bug report from <span class="d-mention">@kenji</span>: <b>Export fails over 10 MB</b> → <span class="d-link">studio/render#57</span></p>
+                </div>
+                <div class="d-card">
+                  <p>Fixed: <span class="d-link">acme/app#128</span> <b>Crash when opening settings</b> — reported by <span class="d-mention">@mara</span></p>
+                </div>
+                <div class="d-card">
+                  <p><span class="d-mention">@mara</span> earned <span class="d-mention">@Bug Hunter</span> for 3 fixed reports. Thanks for helping squash bugs!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="car-controls">
+            <button type="button" class="car-btn" data-dir="-1" aria-label="Previous example">←</button>
+            <div class="car-dots" role="group" aria-label="Choose example">
+              {['/report', '/issues', '/stats', '/leaderboard', 'Updates'].map((label, i) => (
+                <button type="button" class:list={['car-dot', { 'is-active': i === 0 }]} data-index={i} aria-label={`Show ${label}`}></button>
+              ))}
+            </div>
+            <button type="button" class="car-btn" data-dir="1" aria-label="Next example">→</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track">
+        {[0, 1].map(() => (
+          <div class="ticker-set">
+            {[...pipeline, ...pipeline].map((word) => (
+              <span>{word}<i>→</i></span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <section id="how">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="index">01 — How it works</span>
+          <h2>Set up in minutes. <em>Then it runs itself.</em></h2>
+        </div>
+        <div class="cells three">
+          {steps.map((step, i) => (
+            <div class="cell">
+              <span class="num">{pad(i + 1)}</span>
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="index">02 — Features</span>
+          <h2>Everything a bug pipeline needs, <em>nothing it doesn't.</em></h2>
+        </div>
+        <div class="cells three">
+          {features.map((feature) => (
+            <div class="cell">
+              <h3>{feature.title}</h3>
+              <p>{feature.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="index">03 — Commands</span>
+          <h2>A handful of <em>slash commands.</em></h2>
+        </div>
+        <div class="filters" role="group" aria-label="Filter commands">
+          <button type="button" class="filter is-active" data-filter="all" aria-pressed="true">
+            All <b>{commands.length}</b>
+          </button>
+          {categories.map((category) => (
+            <button type="button" class="filter" data-filter={category} aria-pressed="false">
+              {category} <b>{count(category)}</b>
+            </button>
+          ))}
+        </div>
+        <div class="command-grid">
+          {commands.map((c) => (
+            <article class="command-card" data-category={c.category}>
+              <div class="command-top">
+                <span class="command-icon" aria-hidden="true">{c.icon}</span>
+                <h3>{c.name}</h3>
+                <span class="command-tags">
+                  {c.admin && <span class="chip admin">Admin</span>}
+                  <span class="chip">{c.category}</span>
+                </span>
+              </div>
+              <p>{c.desc}</p>
+            </article>
+          ))}
+        </div>
+        <p class="command-note">Admin commands need the Manage Server permission.</p>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap">
+        <h2>Ready when <em>you are.</em></h2>
+        <p class="lede">Add Dispatch to your server and connect a repository.</p>
+        <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+  </main>
+</Base>
+
+<script>
+  const root = document.querySelector<HTMLElement>('.carousel');
+  if (root) {
+    const slides = [...root.querySelectorAll<HTMLElement>('.slide')];
+    const dots = [...root.querySelectorAll<HTMLElement>('.car-dot')];
+    let current = 0;
+    let timer: number | undefined;
+
+    const show = (index: number) => {
+      current = (index + slides.length) % slides.length;
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('is-active', i === current);
+        slide.setAttribute('aria-hidden', String(i !== current));
+      });
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('is-active', i === current);
+        if (i === current) dot.setAttribute('aria-current', 'true');
+        else dot.removeAttribute('aria-current');
+      });
+    };
+
+    const stop = () => window.clearInterval(timer);
+    const start = () => {
+      stop();
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        timer = window.setInterval(() => show(current + 1), 7000);
+      }
+    };
+
+    // Any manual interaction ends autoplay for good.
+    const go = (index: number) => {
+      stop();
+      show(index);
+    };
+
+    root.querySelectorAll<HTMLElement>('.car-btn').forEach((button) =>
+      button.addEventListener('click', () => go(current + Number(button.dataset.dir)))
+    );
+    dots.forEach((dot) => dot.addEventListener('click', () => go(Number(dot.dataset.index))));
+    root.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') go(current - 1);
+      if (event.key === 'ArrowRight') go(current + 1);
+    });
+    root.addEventListener('pointerenter', stop);
+
+    show(0);
+    start();
+  }
+
+  const filters = [...document.querySelectorAll<HTMLButtonElement>('.filter')];
+  const cards = [...document.querySelectorAll<HTMLElement>('.command-card')];
+  filters.forEach((filter) =>
+    filter.addEventListener('click', () => {
+      const selected = filter.dataset.filter;
+      filters.forEach((f) => {
+        const active = f === filter;
+        f.classList.toggle('is-active', active);
+        f.setAttribute('aria-pressed', String(active));
+      });
+      cards.forEach((card) => {
+        card.hidden = selected !== 'all' && card.dataset.category !== selected;
+      });
+    })
+  );
+</script>

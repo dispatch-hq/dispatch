@@ -3,7 +3,6 @@ import * as handlers from './commands';
 import { factory } from './init';
 import type { AppEnv } from './types';
 import { githubRoutes } from './web/github';
-import { landingPage } from './web/pages';
 
 const bot = factory.discord().loader(Object.values(handlers));
 
@@ -12,12 +11,19 @@ const BOT_PERMISSIONS = ((1n << 10n) | (1n << 11n) | (1n << 14n) | (1n << 28n)).
 
 const app = new Hono<AppEnv>();
 
-app.get('/', (c) => {
+// The landing page is a static site (see `site/`) served by Workers Assets.
+// `/` runs this Worker first only so the POST below keeps working; GETs go
+// straight back to the assets.
+app.get('/', (c) => c.env.ASSETS.fetch(c.req.raw));
+
+// The site's "Add to Discord" buttons point here so the invite always uses
+// this environment's Discord application.
+app.get('/invite', (c) => {
   const invite = new URL('https://discord.com/oauth2/authorize');
   invite.searchParams.set('client_id', c.env.DISCORD_APPLICATION_ID);
   invite.searchParams.set('scope', 'bot applications.commands');
   invite.searchParams.set('permissions', BOT_PERMISSIONS);
-  return c.html(landingPage(invite.toString()));
+  return c.redirect(invite.toString());
 });
 
 // Discord interactions. `/` is kept for endpoints configured before v2.

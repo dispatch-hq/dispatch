@@ -162,6 +162,7 @@ export function createWorld() {
   const env: Bindings = {
     DB: d1,
     FILES: r2,
+    ASSETS: { fetch: async () => new Response('<h1>site</h1>', { headers: { 'content-type': 'text/html' } }) } as unknown as Fetcher,
     PUBLIC_URL: 'https://dispatch.test',
     DISCORD_APPLICATION_ID: IDS.app,
     DISCORD_PUBLIC_KEY: (publicKey.export({ format: 'der', type: 'spki' }) as Buffer).subarray(-32).toString('hex'),

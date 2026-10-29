@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <defs>
+    <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="500" height="500">
+      <rect width="500" height="500" fill="#fff"/>
+      <rect x="218" y="215" width="65" height="33" fill="#000"/>
+      <rect x="218" y="282" width="65" height="33" fill="#000"/>
+    </mask>
+  </defs>
+  <rect width="500" height="500" rx="110" fill="#121731"/>
+  <g fill="#8497fa" mask="url(#m)">
+    <rect x="115" y="183" width="270" height="33"/>
+    <rect x="115" y="249" width="270" height="33"/>
+    <rect x="115" y="316" width="270" height="33"/>
+    <ellipse cx="250" cy="266" rx="100" ry="135"/>
+    <path d="M168 125 190 102 242 152 220 174Z"/>
+    <path d="M332 125 310 102 258 152 280 174Z"/>
+  </g>
+</svg>

@@ -1,6 +1,8 @@
 export type Bindings = {
   DB: D1Database;
   FILES: R2Bucket;
+  /** Static site built from `site/` */
+  ASSETS: Fetcher;
 
   /** Public origin of this Worker, e.g. https://dispatch.example.workers.dev (no trailing slash) */
   PUBLIC_URL: string;

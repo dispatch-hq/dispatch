@@ -19,6 +19,16 @@
 		"GITHUB_CLIENT_ID": "Iv23lioZCB9KMg0ox3a2"
 	},
 
+	// The landing page: an Astro site in `site/`, built by `npm run site:build`.
+	// Assets are served first; only these paths always reach the Worker. `/` is
+	// listed so a POST there still reaches the legacy interactions endpoint;
+	// the Worker hands GETs back to the assets binding.
+	"assets": {
+		"directory": "./site/dist",
+		"binding": "ASSETS",
+		"run_worker_first": ["/", "/interactions", "/invite", "/github/*", "/files/*"]
+	},
+
 	"d1_databases": [
 		{
 			"binding": "DB",
