@@ -104,8 +104,37 @@ const structuredData = {
           <a href="/docs/">Docs</a>
           <a class="button small" href="/invite">Add to Discord</a>
         </nav>
+        <button
+          class="menu-toggle"
+          type="button"
+          aria-label="Open menu"
+          aria-expanded="false"
+          aria-controls="mobile-menu"
+        >
+          <span></span>
+          <span></span>
+        </button>
       </div>
     </header>
+
+    <!-- Sits outside the header: its backdrop-filter would otherwise trap a fixed child. -->
+    <div class="mobile-menu" id="mobile-menu" hidden>
+      <nav class="wrap mobile-menu-inner" aria-label="Mobile">
+        <a href="/#how"><i>01</i>How it works</a>
+        <a href="/#features"><i>02</i>Features</a>
+        <a href="/#trust"><i>03</i>Trust</a>
+        <a href="/#commands"><i>04</i>Commands</a>
+        <a href="/docs/"><i>05</i>Docs</a>
+        <div class="mobile-menu-foot">
+          <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
+          <div class="mobile-menu-links">
+            <a href="https://github.com/dispatch-hq/dispatch" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+            <a href="/terms/">Terms</a>
+            <a href="/privacy/">Privacy</a>
+          </div>
+        </div>
+      </nav>
+    </div>
 
     <slot />
 
@@ -130,6 +159,11 @@ const structuredData = {
             <a href="https://github.com/dispatch-hq/dispatch" target="_blank" rel="noopener noreferrer">Source on GitHub</a>
             <a href="https://github.com/dispatch-hq/dispatch/issues" target="_blank" rel="noopener noreferrer">Report a problem</a>
           </div>
+          <div>
+            <h4>Legal</h4>
+            <a href="/terms/">Terms of Service</a>
+            <a href="/privacy/">Privacy Policy</a>
+          </div>
         </div>
         <div class="footer-row">
           <span>© {new Date().getFullYear()} Dispatch</span>
@@ -147,5 +181,47 @@ const structuredData = {
         </div>
       </div>
     </footer>
+
+    <script>
+      const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle');
+      const menu = document.getElementById('mobile-menu');
+      const desktop = window.matchMedia('(min-width: 761px)');
+
+      if (toggle && menu) {
+        let hideTimer: number | undefined;
+
+        const setOpen = (open: boolean) => {
+          clearTimeout(hideTimer);
+          toggle.setAttribute('aria-expanded', String(open));
+          toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+          document.documentElement.classList.toggle('menu-open', open);
+          if (open) {
+            menu.hidden = false;
+            // Force a frame so the transition runs from the closed state.
+            void menu.offsetWidth;
+            menu.classList.add('is-open');
+          } else {
+            menu.classList.remove('is-open');
+            hideTimer = window.setTimeout(() => (menu.hidden = true), 320);
+          }
+        };
+
+        const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
+
+        toggle.addEventListener('click', () => setOpen(!isOpen()));
+        menu.addEventListener('click', (e) => {
+          if ((e.target as HTMLElement).closest('a')) setOpen(false);
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && isOpen()) {
+            setOpen(false);
+            toggle.focus();
+          }
+        });
+        desktop.addEventListener('change', (e) => {
+          if (e.matches && isOpen()) setOpen(false);
+        });
+      }
+    </script>
   </body>
 </html>

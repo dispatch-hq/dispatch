@@ -86,6 +86,18 @@ const keyCommands = commands.filter((c) => c.key).length;
 const count = (category: string) => commands.filter((c) => c.category === category).length;
 
 const pipeline = ['Report', 'Triage', 'Issue', 'Fixed', 'Reward'];
+// One real report, from a message to a fixed bug. Slides are rebuilt from real screenshots.
+const story = [
+  { label: 'Report bug', caption: 'Right-click a message, choose Apps → Report bug, and pick the closest type.' },
+  { label: 'The form', caption: 'The form opens pre-filled from the message. Add steps and environment.' },
+  { label: 'Submitted', caption: 'The reporter gets a private confirmation. Nothing is public yet.' },
+  { label: 'Triage', caption: 'Moderators review it in the triage channel, with a thread to discuss.' },
+  { label: 'Filed', caption: 'One click approves it, and Dispatch files the GitHub issue.' },
+  { label: 'GitHub issue', caption: 'The issue arrives with labels and a link back to the original message.' },
+  { label: 'Updates channel', caption: 'When it is fixed, the updates channel announces it and rewards the reporter.' },
+  { label: 'Reporter DMs', caption: 'The reporter hears about approval and the fix by DM, so nobody has to ask.' },
+];
+
 const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
@@ -109,29 +121,205 @@ const pad = (n: number) => String(n).padStart(2, '0');
           <p class="assure">Access limited to one repository · <a href="#trust">See exactly what it can do</a></p>
         </div>
 
-        <div class="demo">
+        <div class="carousel" role="region" aria-roledescription="carousel" aria-label="A bug report, start to finish" tabindex="0">
           <div class="discord">
-            <p class="cmd"><b>mara</b> used <b>/report</b></p>
-            <div class="d-card">
-              <h4>Crash when opening settings</h4>
-              <small>Report #42 · from <span class="d-mention">@mara</span></small>
-              <p>The app closes immediately after tapping the gear icon on Android 15.</p>
-              <div class="d-actions">
-                <span class="d-btn primary">Approve</span>
-                <span class="d-btn">Reject</span>
-              </div>
-            </div>
-            <div class="d-card">
-              <div class="d-row">
-                <div>
-                  <h4>Filed · acme/app#128</h4>
-                  <small>Approved by <span class="d-mention">@kai</span> · <span class="d-mention">@mara</span> gets a DM when it's fixed</small>
+            <div class="slides">
+              <figure class="slide is-active" aria-label="Report bug">
+                <div class="slide-body">
+                  <div class="d-msg">
+                    <img class="d-avatar photo" src="/blackcat.webp" alt="" width="36" height="36" />
+                    <div>
+                      <div class="d-head"><b>BlackCat</b><time>17:43</time></div>
+                      <p>Why does the launcher crash whenever I change this setting?</p>
+                    </div>
+                  </div>
+                  <div class="d-msg">
+                    <img class="d-avatar" src="/logo.svg" alt="" width="20" height="22" />
+                    <div class="d-main">
+                      <div class="d-head"><b>Dispatch</b><span class="d-app">APP</span><time>17:44</time></div>
+                      <div class="d-card">
+                        <h4>What kind of problem is it?</h4>
+                        <p>Pick the closest match. The form opens next.</p>
+                        <div class="d-select"><span>Choose a type</span><i aria-hidden="true">⌄</i></div>
+                      </div>
+                      <small class="d-note">Only you can see this</small>
+                    </div>
+                  </div>
                 </div>
-                <span class="d-btn">View issue</span>
-              </div>
+                <figcaption><span>01</span>{story[0].caption}</figcaption>
+              </figure>
+
+              <figure class="slide" aria-label="The form">
+                <div class="slide-body">
+                  <div class="d-modal">
+                    <div class="d-modal-head"><img src="/logo.svg" alt="" width="18" height="20" /><b>Report a bug · Crash</b></div>
+                    <div class="d-field"><label>Title <em>*</em></label><div class="d-input">Launcher Crash</div></div>
+                    <div class="d-field"><label>What happened? <em>*</em></label><div class="d-input">The launcher crashes when I change the resolution</div></div>
+                    <div class="d-field"><label>Steps to reproduce</label><div class="d-input">Open settings<br />Try to change the resolution</div></div>
+                    <div class="d-field"><label>Version / environment</label><div class="d-input">Windows 11</div></div>
+                    <div class="d-actions">
+                      <span class="d-btn wide">Cancel</span>
+                      <span class="d-btn wide blurple">Submit</span>
+                    </div>
+                  </div>
+                </div>
+                <figcaption><span>02</span>{story[1].caption}</figcaption>
+              </figure>
+
+              <figure class="slide" aria-label="Submitted">
+                <div class="slide-body">
+                  <div class="d-msg">
+                    <img class="d-avatar" src="/logo.svg" alt="" width="20" height="22" />
+                    <div class="d-main">
+                      <div class="d-head"><b>Dispatch</b><span class="d-app">APP</span><time>17:46</time></div>
+                      <div class="d-card">
+                        <h4>Report submitted</h4>
+                        <p>Thanks! <b>Launcher Crash</b> is waiting for a moderator to review it. You'll get a DM when it's approved.</p>
+                      </div>
+                      <small class="d-note">Only you can see this</small>
+                    </div>
+                  </div>
+                </div>
+                <figcaption><span>03</span>{story[2].caption}</figcaption>
+              </figure>
+
+              <figure class="slide" aria-label="Triage">
+                <div class="slide-body">
+                  <div class="d-msg">
+                    <img class="d-avatar" src="/logo.svg" alt="" width="20" height="22" />
+                    <div class="d-main">
+                      <div class="d-head"><b>Dispatch</b><span class="d-app">APP</span><time>17:46</time></div>
+                      <div class="d-card">
+                        <div class="d-row">
+                          <h4>Launcher Crash</h4>
+                          <span class="d-btn">Source message ↗</span>
+                        </div>
+                        <small>Report #7 · from <span class="d-mention">@BlackCat</span> · Crash</small>
+                        <hr />
+                        <p>The launcher crashes when I change the resolution</p>
+                        <p><b>Steps to reproduce</b><br />Open settings<br />Try to change the resolution</p>
+                        <p><b>Environment</b><br />Windows 11</p>
+                        <hr />
+                        <p><b>Awaiting review</b></p>
+                        <div class="d-actions">
+                          <span class="d-btn">Approve</span>
+                          <span class="d-btn">Reject</span>
+                        </div>
+                      </div>
+                      <div class="d-card d-thread">
+                        <h4>Report #7 · Launcher Crash <span class="d-link">See Thread ›</span></h4>
+                        <small>There are no messages in this thread yet.</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <figcaption><span>04</span>{story[3].caption}</figcaption>
+              </figure>
+
+              <figure class="slide" aria-label="Filed">
+                <div class="slide-body">
+                  <div class="d-msg">
+                    <img class="d-avatar" src="/logo.svg" alt="" width="20" height="22" />
+                    <div class="d-main">
+                      <div class="d-head"><b>Dispatch</b><span class="d-app">APP</span><time>17:46</time></div>
+                      <div class="d-card">
+                        <div class="d-row">
+                          <h4>Launcher Crash</h4>
+                          <span class="d-btn">Source message ↗</span>
+                        </div>
+                        <small>Report #7 · from <span class="d-mention">@BlackCat</span> · Crash</small>
+                        <hr />
+                        <p>The launcher crashes when I change the resolution</p>
+                        <p><b>Steps to reproduce</b><br />Open settings<br />Try to change the resolution</p>
+                        <p><b>Environment</b><br />Windows 11</p>
+                        <hr />
+                        <div class="d-row stack">
+                          <p><b>Filed</b> as <span class="nobr">jakemackie/ReSkateTrainerUpdater#5</span> · approved by <span class="d-mention">@os</span></p>
+                          <span class="d-btn">View issue ↗</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <figcaption><span>05</span>{story[4].caption}</figcaption>
+              </figure>
+
+              <figure class="slide" aria-label="GitHub issue">
+                <div class="slide-body">
+                  <div class="gh">
+                    <h4>Launcher Crash <span>#5</span></h4>
+                    <span class="gh-state">Open</span>
+                    <div class="gh-box">
+                      <div class="gh-bar"><img src="/logo.svg" alt="" width="16" height="18" /><b>dispatch-hq</b><i>bot</i> opened 1m ago</div>
+                      <div class="gh-body">
+                        <h5>Description</h5>
+                        <p>The launcher crashes when I change the resolution</p>
+                        <h5>Steps to reproduce</h5>
+                        <p>Open settings<br />Try to change the resolution</p>
+                        <h5>Environment</h5>
+                        <p>Windows 11</p>
+                        <hr />
+                        <small>Reported from Discord via <u>Dispatch</u> · <u>Original message</u> · Report #7</small>
+                      </div>
+                    </div>
+                    <div class="gh-labels"><b>dispatch-hq</b> added <span class="gh-label bug">bug</span><span class="gh-label crash">Crash</span></div>
+                  </div>
+                </div>
+                <figcaption><span>06</span>{story[5].caption}</figcaption>
+              </figure>
+
+              <figure class="slide" aria-label="Updates channel">
+                <div class="slide-body">
+                  <p class="cmd">in <b>#updates</b></p>
+                  <div class="d-card">
+                    <p>New bug report from <span class="d-mention">@BlackCat</span>: <b>Launcher Crash</b> → <span class="d-link">jakemackie/ReSkateTrainerUpdater#5</span></p>
+                  </div>
+                  <div class="d-card">
+                    <p>Fixed: <span class="d-link">jakemackie/ReSkateTrainerUpdater#5</span> <b>Launcher Crash</b> — reported by <span class="d-mention">@BlackCat</span></p>
+                  </div>
+                  <div class="d-card">
+                    <p><span class="d-mention">@BlackCat</span> earned <span class="d-mention">@Bug Hunter</span> for <b>1</b> fixed bug reports.</p>
+                  </div>
+                </div>
+                <figcaption><span>07</span>{story[6].caption}</figcaption>
+              </figure>
+
+              <figure class="slide" aria-label="Reporter DMs">
+                <div class="slide-body">
+                  <div class="d-msg">
+                    <img class="d-avatar" src="/logo.svg" alt="" width="20" height="22" />
+                    <div class="d-main">
+                      <div class="d-head"><b>Dispatch</b><span class="d-app">APP</span><time>17:47</time></div>
+                      <div class="d-card">
+                        <h4>Report approved</h4>
+                        <p>Your report <b>Launcher Crash</b> was reviewed and filed as <span class="d-link">jakemackie/ReSkateTrainerUpdater#5</span>. You'll hear from me when it's fixed.</p>
+                      </div>
+                      <div class="d-card">
+                        <h4>Your bug was fixed</h4>
+                        <p><span class="d-link">jakemackie/ReSkateTrainerUpdater#5</span> — <b>Launcher Crash</b> was closed as completed. Thanks for reporting it!</p>
+                      </div>
+                      <div class="d-card">
+                        <h4>New reward unlocked</h4>
+                        <p>You've had <b>1</b> bug reports fixed and earned a new role. Thank you!</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <figcaption><span>08</span>{story[7].caption}</figcaption>
+              </figure>
             </div>
           </div>
-          <p class="assure">Illustrative example · sample names and data</p>
+
+          <div class="car-controls">
+            <button type="button" class="car-btn" data-dir="-1" aria-label="Previous step">←</button>
+            <div class="car-dots" role="group" aria-label="Choose step">
+              {story.map((step, i) => (
+                <button type="button" class:list={['car-dot', { 'is-active': i === 0 }]} data-index={i} aria-label={`Show step ${i + 1}: ${step.label}`}></button>
+              ))}
+            </div>
+            <button type="button" class="car-btn" data-dir="1" aria-label="Next step">→</button>
+          </div>
+          <p class="assure">A real report, start to finish · from a test server</p>
         </div>
       </div>
     </div>
@@ -263,7 +451,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
                 <h3>{c.name}</h3>
                 <span class="command-tags">
                   {c.admin && <span class="chip admin">Admin</span>}
-                  <span class="chip">{c.menu ? 'Message menu' : c.category}</span>
+                  <span class={c.menu ? 'chip' : 'chip cat'}>{c.menu ? 'Message menu' : c.category}</span>
                 </span>
               </div>
               <p>{c.desc}</p>
@@ -279,13 +467,60 @@ const pad = (n: number) => String(n).padStart(2, '0');
         <h2>Ready when <em>you are.</em></h2>
         <p class="lede">Add Dispatch to your server, connect a GitHub repository and start collecting structured bug reports.</p>
         <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
-        <p class="assure">Setup takes one command: <code>/dispatch setup</code> · Access limited to one repository</p>
       </div>
     </section>
   </main>
 </Base>
 
 <script>
+  const root = document.querySelector<HTMLElement>('.carousel');
+  if (root) {
+    const slides = [...root.querySelectorAll<HTMLElement>('.slide')];
+    const dots = [...root.querySelectorAll<HTMLElement>('.car-dot')];
+    let current = 0;
+    let timer: number | undefined;
+
+    const show = (index: number) => {
+      current = (index + slides.length) % slides.length;
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('is-active', i === current);
+        slide.setAttribute('aria-hidden', String(i !== current));
+      });
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('is-active', i === current);
+        if (i === current) dot.setAttribute('aria-current', 'true');
+        else dot.removeAttribute('aria-current');
+      });
+    };
+
+    const stop = () => window.clearInterval(timer);
+    const start = () => {
+      stop();
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        timer = window.setInterval(() => show(current + 1), 7000);
+      }
+    };
+
+    // Any manual interaction ends autoplay for good.
+    const go = (index: number) => {
+      stop();
+      show(index);
+    };
+
+    root.querySelectorAll<HTMLElement>('.car-btn').forEach((button) =>
+      button.addEventListener('click', () => go(current + Number(button.dataset.dir)))
+    );
+    dots.forEach((dot) => dot.addEventListener('click', () => go(Number(dot.dataset.index))));
+    root.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') go(current - 1);
+      if (event.key === 'ArrowRight') go(current + 1);
+    });
+    root.addEventListener('pointerenter', stop);
+
+    show(0);
+    start();
+  }
+
   const filters = [...document.querySelectorAll<HTMLButtonElement>('.filter')];
   const cards = [...document.querySelectorAll<HTMLElement>('.command-card')];
   filters.forEach((filter) =>

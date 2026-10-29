@@ -1,0 +1,89 @@
+---
+import Base from '../layouts/Base.astro';
+
+const updated = 'October 29, 2026';
+---
+
+<Base
+  title="Terms of Service — Dispatch"
+  description="The terms for using the Dispatch Discord bot and website."
+  path="/terms/"
+  ogImage="/og-terms.png"
+  imageAlt="Dispatch terms of service."
+>
+  <main>
+    <div class="hero-bg">
+      <div class="wrap page-head">
+        <span class="index">Legal</span>
+        <h1>Terms of <em>Service.</em></h1>
+        <p class="lede">The rules for using Dispatch. Last updated {updated}.</p>
+      </div>
+    </div>
+
+    <div class="wrap legal">
+      <article class="docs-body">
+        <section>
+          <h2>Agreement</h2>
+          <p>By adding Dispatch to a Discord server, using its commands, or using this website, you agree to these terms and to the <a href="/privacy/">Privacy Policy</a>. If you are adding Dispatch on behalf of a server or organization, you confirm you are allowed to do so. If you do not agree, do not use Dispatch.</p>
+        </section>
+
+        <section>
+          <h2>What Dispatch does</h2>
+          <p>Dispatch lets members of a Discord server submit bug reports and files them as issues in a GitHub repository chosen by the server's admins. It can also run a triage queue, post updates, message reporters, and grant reward roles.</p>
+        </section>
+
+        <section>
+          <h2>Your responsibilities</h2>
+          <ul>
+            <li>Follow the <a href="https://discord.com/terms" target="_blank" rel="noopener noreferrer">Discord Terms of Service</a>, the <a href="https://discord.com/guidelines" target="_blank" rel="noopener noreferrer">Community Guidelines</a> and the <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service" target="_blank" rel="noopener noreferrer">GitHub Terms of Service</a>.</li>
+            <li>Only link a repository you have the right to link. Dispatch checks that you have push access, but you are responsible for the choice.</li>
+            <li>Do not use Dispatch to harass people, spam, post unlawful content, or share content you do not have the right to share.</li>
+            <li>Do not try to disrupt, probe or reverse-engineer the service, work around its limits, or access data that is not yours.</li>
+            <li>Server admins are responsible for how Dispatch is used in their server and for telling their members that reports, usernames and attachments can become visible in GitHub.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Content you submit</h2>
+          <p>You keep ownership of what you submit. You give Dispatch permission to store it and to publish it where the feature requires: in the GitHub issue, in Discord channels and messages, and, for attachments, at a public link. Do not submit passwords, tokens, personal data about others, or anything you would not want public in the linked repository.</p>
+          <p>We may remove content or stop serving a server that breaks these terms.</p>
+        </section>
+
+        <section>
+          <h2>Availability</h2>
+          <p>Dispatch is provided free of charge and may change, be interrupted, or be discontinued at any time. We try to keep it reliable, but we do not guarantee uptime, and you should not depend on it as the only record of a report.</p>
+        </section>
+
+        <section>
+          <h2>Third-party services</h2>
+          <p>Dispatch relies on Discord, GitHub and Cloudflare. Their availability, rules and changes are outside our control, and your use of them is governed by their own terms.</p>
+        </section>
+
+        <section>
+          <h2>Ending use</h2>
+          <p>You can stop at any time by running <code>/dispatch disconnect</code>, uninstalling the GitHub App, and removing the bot from your server. We may suspend or block access to Dispatch, for a server or a user, if these terms are broken or the service is being abused. See the <a href="/privacy/">Privacy Policy</a> for what happens to stored data.</p>
+        </section>
+
+        <section>
+          <h2>Disclaimer and liability</h2>
+          <p>Dispatch is provided <b>as is</b>, without warranties of any kind, express or implied. To the extent the law allows, we are not liable for indirect or consequential loss, lost data, or lost profit arising from your use of Dispatch, including issues filed in the wrong place, missed reports, or content that becomes public through a linked repository.</p>
+        </section>
+
+        <section>
+          <h2>Open source</h2>
+          <p>The Dispatch source code is available on <a href="https://github.com/dispatch-hq/dispatch" target="_blank" rel="noopener noreferrer">GitHub</a> under its own licence. These terms apply to the hosted service and this website, not to your use of the code.</p>
+        </section>
+
+        <section>
+          <h2>Changes</h2>
+          <p>We may update these terms. The date at the top shows the latest revision, and continuing to use Dispatch after a change means you accept it.</p>
+        </section>
+
+        <section>
+          <h2>Contact</h2>
+          <p>Questions about these terms? <a href="https://github.com/dispatch-hq/dispatch/issues" target="_blank" rel="noopener noreferrer">Open an issue on GitHub</a>.</p>
+        </section>
+      </article>
+    </div>
+  </main>
+</Base>

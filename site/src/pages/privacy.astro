@@ -1,0 +1,106 @@
+---
+import Base from '../layouts/Base.astro';
+
+const updated = 'October 29, 2026';
+---
+
+<Base
+  title="Privacy Policy — Dispatch"
+  description="What Dispatch stores when your server uses it, who can see it, and how to have it removed."
+  path="/privacy/"
+  ogImage="/og-privacy.png"
+  imageAlt="Dispatch privacy policy: what we store, and why."
+>
+  <main>
+    <div class="hero-bg">
+      <div class="wrap page-head">
+        <span class="index">Legal</span>
+        <h1>Privacy <em>Policy.</em></h1>
+        <p class="lede">What Dispatch stores, who can see it, and how to get it removed. Last updated {updated}.</p>
+      </div>
+    </div>
+
+    <div class="wrap legal">
+      <article class="docs-body">
+        <section>
+          <h2>Overview</h2>
+          <p>Dispatch is a Discord bot that turns bug reports from a Discord server into GitHub issues. This policy covers the Dispatch bot and this website. It is meant to be read alongside the <a href="/terms/">Terms of Service</a>.</p>
+          <p>Dispatch collects only what it needs to file, track and report on bugs. It does not sell data, show ads, or build profiles of people.</p>
+        </section>
+
+        <section>
+          <h2>What we collect</h2>
+          <p>When a member files a report, or an admin configures Dispatch, we store:</p>
+          <ul>
+            <li><b>Reports:</b> the text a member submits (title, steps, environment, report type), the reporter's Discord user ID and username, the server it came from, its status, and the GitHub issue it became.</li>
+            <li><b>Attachments:</b> screenshots or logs a member uploads with a report.</li>
+            <li><b>Server settings:</b> the Discord server ID, the channel and role IDs you choose (triage channel, updates channel, staff role, reward roles), labels, report types, cooldown, and the linked GitHub repository (its ID, name and installation ID).</li>
+            <li><b>Drafts:</b> if a member uses <b>Apps → Report bug</b> on a message, that message's text is held briefly so the form can be pre-filled. Drafts older than a day are ignored and swept on the next write.</li>
+          </ul>
+          <p>Dispatch does not read message content in general. It only sees a message's text when a member chooses to report that specific message.</p>
+          <p>When an admin links a repository, they sign in with GitHub so Dispatch can confirm they have push access. The sign-in token is used once to list repositories and is not stored. Afterwards Dispatch uses short-lived installation tokens limited to the single linked repository.</p>
+        </section>
+
+        <section>
+          <h2>How it is used</h2>
+          <ul>
+            <li>To create and update GitHub issues from reports.</li>
+            <li>To run triage, post updates, send direct messages to reporters about their reports, and grant reward roles.</li>
+            <li>To show members their own reports (<code>/issues</code>) and reporter statistics.</li>
+            <li>To keep the service running and fix faults.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>What is public</h2>
+          <p>Some of what you submit becomes visible outside Discord. Please keep that in mind when filing a report.</p>
+          <ul>
+            <li><b>GitHub issues</b> are created in the repository the server's admins linked. They include the report text and the reporter's Discord username, and are as public or private as that repository.</li>
+            <li><b>Attachments</b> are stored in Cloudflare R2 so that images keep working in GitHub issues after Discord's own links expire. Anyone with an attachment's link can open it.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Where it is stored</h2>
+          <p>Reports and settings are stored in Cloudflare D1, and attachments in Cloudflare R2. Dispatch runs on Cloudflare Workers. Data also passes through Discord and GitHub, which have their own policies:</p>
+          <ul>
+            <li><a href="https://discord.com/privacy" target="_blank" rel="noopener noreferrer">Discord Privacy Policy</a></li>
+            <li><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub Privacy Statement</a></li>
+            <li><a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare Privacy Policy</a></li>
+          </ul>
+          <p>Each server's data is kept separate. Members can only list their own reports with <code>/issues</code>.</p>
+        </section>
+
+        <section>
+          <h2>Retention and removal</h2>
+          <p>Reports, settings and attachments are kept until they are removed. Nothing is deleted automatically yet.</p>
+          <ul>
+            <li>Running <code>/dispatch disconnect</code>, or uninstalling the GitHub App, removes the repository link. Existing reports, settings and attachments stay stored.</li>
+            <li>Removing the bot from a server stops Dispatch from acting there, but stored data is not deleted on its own.</li>
+            <li>To have a report, attachment, or everything tied to your Discord ID or your server removed, ask us using the contact details below. Issues already created on GitHub belong to that repository and must be removed there.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Cookies and analytics</h2>
+          <p>This website does not set cookies and does not use analytics or advertising trackers.</p>
+        </section>
+
+        <section>
+          <h2>Children</h2>
+          <p>Dispatch is not directed at children. Discord requires users to be at least 13 (or the minimum age in their country), and we do not knowingly collect data from anyone younger.</p>
+        </section>
+
+        <section>
+          <h2>Changes</h2>
+          <p>If this policy changes, the date at the top changes with it. Material changes will also be noted in the <a href="https://github.com/dispatch-hq/dispatch" target="_blank" rel="noopener noreferrer">GitHub repository</a>.</p>
+        </section>
+
+        <section>
+          <h2>Contact</h2>
+          <p>For questions or removal requests, <a href="https://github.com/dispatch-hq/dispatch/issues" target="_blank" rel="noopener noreferrer">open an issue on GitHub</a>. Please do not include personal or sensitive information in a public issue. Say you have a privacy request and we will arrange a private way to continue.</p>
+        </section>
+      </article>
+    </div>
+  </main>
+</Base>
