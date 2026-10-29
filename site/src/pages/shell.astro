@@ -11,9 +11,44 @@ import Base from '../layouts/Base.astro';
 <Base title="%%DISPATCH_TITLE%% · Dispatch" noindex>
   <main>
     <div class="hero-bg">
-      <div class="wrap page">
-        <div class="panel">%%DISPATCH_CONTENT%%</div>
-      </div>
+      <div class="wrap page">%%DISPATCH_CONTENT%%</div>
     </div>
   </main>
 </Base>
+
+<script>
+  // Repository picker search: filters the cards client-side.
+  const input = document.querySelector<HTMLInputElement>('[data-repo-search]');
+  if (input) {
+    const cards = [...document.querySelectorAll<HTMLElement>('[data-repo]')];
+    const count = document.querySelector<HTMLElement>('[data-repo-count]');
+    const empty = document.querySelector<HTMLElement>('[data-repo-empty]');
+    const total = cards.length;
+
+    const filter = () => {
+      const terms = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+      let shown = 0;
+      for (const card of cards) {
+        const haystack = card.dataset.search ?? '';
+        const match = terms.every((term) => haystack.includes(term));
+        card.hidden = !match;
+        if (match) shown++;
+      }
+      if (count) {
+        const noun = total === 1 ? 'repository' : 'repositories';
+        count.textContent = terms.length ? `${shown} of ${total} ${noun}` : `${total} ${noun}`;
+      }
+      if (empty) empty.hidden = shown > 0;
+    };
+
+    input.addEventListener('input', filter);
+    // "/" jumps to the search box, like on GitHub.
+    document.addEventListener('keydown', (event) => {
+      const target = event.target as HTMLElement;
+      if (event.key === '/' && !/^(INPUT|TEXTAREA)$/.test(target.tagName)) {
+        event.preventDefault();
+        input.focus();
+      }
+    });
+  }
+</script>

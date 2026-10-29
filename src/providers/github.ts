@@ -140,6 +140,8 @@ export type WritableRepo = {
   repoId: number;
   fullName: string;
   private: boolean;
+  description: string | null;
+  language: string | null;
 };
 
 export type GitHubUser = { login: string; avatar_url: string };
@@ -162,6 +164,8 @@ export async function listWritableRepos(
       id: number;
       full_name: string;
       private: boolean;
+      description?: string | null;
+      language?: string | null;
       permissions?: { admin?: boolean; maintain?: boolean; push?: boolean };
     }[];
   };
@@ -180,6 +184,8 @@ export async function listWritableRepos(
           repoId: r.id,
           fullName: r.full_name,
           private: r.private,
+          description: r.description ?? null,
+          language: r.language ?? null,
         }));
     })
   );

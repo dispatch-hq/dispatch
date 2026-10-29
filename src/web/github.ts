@@ -66,6 +66,8 @@ githubRoutes.get('/callback', async (c) => {
       repos.slice(0, MAX_REPOS).map(async (repo) => ({
         fullName: repo.fullName,
         private: repo.private,
+        description: repo.description,
+        language: repo.language,
         token: await signToken<RepoGrant>(
           c.env.STATE_SECRET,
           { g: claims.g, u: claims.u, i: repo.installationId, r: repo.repoId, n: repo.fullName },

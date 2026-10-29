@@ -63,46 +63,86 @@ export function messagePage(title: string, message: string, kind: Kind = 'info')
 
   return {
     title,
-    body: html`<span class="index ${kind}">${LABELS[kind]}</span>
+    body: html`<div class="panel">
+      <span class="index ${kind}">${LABELS[kind]}</span>
       <h1 class="panel-title">${title}</h1>
       <p class="lede">${message}</p>
-      <div class="cta">${action}</div>`,
+      <div class="cta">${action}</div>
+    </div>`,
   };
 }
 
-export type RepoChoice = { fullName: string; private: boolean; token: string };
+export type RepoChoice = {
+  fullName: string;
+  private: boolean;
+  description: string | null;
+  language: string | null;
+  token: string;
+};
+
+const searchIcon = raw(
+  `<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>`
+);
+
+function repoCard(repo: RepoChoice): Html {
+  // The whole card is the submit button. Search (see site/src/pages/shell.astro)
+  // matches against `data-search`.
+  const search = `${repo.fullName} ${repo.description ?? ''} ${repo.language ?? ''}`.toLowerCase();
+  return html`<form class="repo-form" method="post" action="/github/link" data-repo data-search="${search}">
+    <input type="hidden" name="token" value="${repo.token}" />
+    <button class="repo-card" type="submit">
+      <span class="repo-head">
+        <span class="repo-name">${repo.fullName}</span>
+        ${repo.private ? html`<span class="chip">Private</span>` : ''}
+      </span>
+      <span class="repo-desc ${repo.description ? '' : 'none'}">${repo.description ?? 'No description'}</span>
+      <span class="repo-foot">
+        <span class="repo-lang">${repo.language ?? ''}</span>
+        <span class="repo-go">Connect <span aria-hidden="true">→</span></span>
+      </span>
+    </button>
+  </form>`;
+}
 
 export function repoPickerPage(opts: { login: string; repos: RepoChoice[]; installUrl: string }): Page {
-  const list = opts.repos.length
-    ? html`<div class="repos">
-        ${opts.repos.map(
-          (r) => html`<form method="post" action="/github/link">
-            <input type="hidden" name="token" value="${r.token}" />
-            <button class="repo" type="submit">
-              <span class="repo-name">${r.fullName}</span>
-              <span class="repo-meta">${r.private ? html`<span class="chip">Private</span>` : ''}<span aria-hidden="true">→</span></span>
-            </button>
-          </form>`
-        )}
-      </div>`
-    : html`<p class="lede">
-        Dispatch isn't installed on any repository you can push to yet. Install it first, then you'll be
-        brought straight back here.
-      </p>`;
+  const total = opts.repos.length;
+
+  const head = html`<div class="picker-head">
+    <span class="index">Connect a repository</span>
+    <h1 class="panel-title">Choose a <em>repository.</em></h1>
+    <p class="lede">
+      Signed in as <strong>@${opts.login}</strong>. Bug reports from your server will be filed as issues in the
+      repository you pick.
+    </p>
+  </div>`;
+
+  const body = total
+    ? html`<div class="repo-tools">
+          <label class="search">
+            ${searchIcon}
+            <input type="search" placeholder="Search repositories…" aria-label="Search repositories" autocomplete="off" data-repo-search />
+          </label>
+          <span class="repo-count" data-repo-count data-total="${total}">${total} ${total === 1 ? 'repository' : 'repositories'}</span>
+        </div>
+        <div class="repo-grid">${opts.repos.map(repoCard)}</div>
+        <p class="repo-empty" data-repo-empty hidden>No repositories match your search.</p>`
+    : html`<div class="panel">
+        <p class="lede">
+          Dispatch isn't installed on any repository you can push to yet. Install it first, then you'll be
+          brought straight back here.
+        </p>
+      </div>`;
 
   return {
     title: 'Choose a repository',
-    body: html`<span class="index">Connect a repository</span>
-      <h1 class="panel-title">Choose a <em>repository.</em></h1>
-      <p class="lede">
-        Signed in as <strong>@${opts.login}</strong>. Bug reports from your server will be filed as issues there.
-      </p>
-      ${list}
-      <div class="cta">
-        <a class="button ${opts.repos.length ? 'ghost' : ''}" href="${opts.installUrl}">
-          ${opts.repos.length ? 'Install on another repository' : 'Install the GitHub App'}
+    body: html`<div class="picker">
+      ${head} ${body}
+      <div class="picker-foot">
+        <a class="button ${total ? 'ghost' : ''}" href="${opts.installUrl}">
+          ${total ? 'Install on another repository' : 'Install the GitHub App'}
         </a>
+        <p class="command-note">Only repositories where the app is installed and you have write access are shown.</p>
       </div>
-      <p class="command-note">Only repositories where the app is installed and you have write access are shown.</p>`,
+    </div>`,
   };
 }

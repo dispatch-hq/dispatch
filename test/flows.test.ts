@@ -97,7 +97,7 @@ beforeAll(() => {
   on('GET', /api\.github\.com\/user\/installations\?/, () => ({ installations: [{ id: 7 }] }));
   on('GET', /api\.github\.com\/user\/installations\/7\/repositories/, () => ({
     repositories: [
-      { id: 99, full_name: 'acme/app', private: false, permissions: { push: true } },
+      { id: 99, full_name: 'acme/app', private: false, description: 'The main <app>', language: 'TypeScript', permissions: { push: true } },
       { id: 100, full_name: 'acme/readonly', private: true, permissions: { pull: true } },
     ],
   }));
@@ -153,6 +153,9 @@ describe('linking a repository', () => {
     const page = await (await w.request(`/github/callback?code=abc&state=${encodeURIComponent(state)}`)).text();
 
     expect(page).toContain('acme/app');
+    expect(page).toContain('The main &lt;app&gt;'); // description, escaped
+    expect(page).toContain('TypeScript');
+    expect(page).toContain('data-search="acme/app the main &lt;app&gt; typescript"');
     expect(page).not.toContain('acme/readonly');
     expect(page).toContain('@octocat');
 
