@@ -1,6 +1,7 @@
 import { Hono, type Handler } from 'hono';
 import * as handlers from './commands';
 import { factory } from './init';
+import { setAccent } from './lib/ui';
 import type { AppEnv } from './types';
 import { githubRoutes } from './web/github';
 
@@ -10,6 +11,11 @@ const bot = factory.discord().loader(Object.values(handlers));
 const BOT_PERMISSIONS = ((1n << 10n) | (1n << 11n) | (1n << 14n) | (1n << 28n) | (1n << 35n)).toString();
 
 const app = new Hono<AppEnv>();
+
+app.use('*', (c, next) => {
+  setAccent(c.env.ACCENT_COLOR);
+  return next();
+});
 
 // The landing page is a static site (see `site/`) served by Workers Assets.
 // `/` runs this Worker first only so the POST below keeps working; GETs go

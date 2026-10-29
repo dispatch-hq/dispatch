@@ -91,7 +91,7 @@ function settingsPanel(guild: GuildRow | null, warning?: string) {
       ].join('\n')
     ),
     row(
-      makeButton('settings-edit', 'Edit labels, types & cooldown', buttonStyle.Secondary),
+      makeButton('settings-edit', 'Edit labels, types & cooldown', buttonStyle.Primary),
       makeButton(
         'settings-dm',
         settings.dm_reporters ? 'Turn off reporter DMs' : 'Turn on reporter DMs',

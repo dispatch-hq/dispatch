@@ -75,8 +75,8 @@ export function reportCard(report: ReportRow, error?: string): Container {
     statusBlock(report, error),
     pending &&
       row(
-        makeButton('triage-approve', 'Approve', buttonStyle.Secondary).custom_value(String(report.id)),
-        makeButton('triage-reject', 'Reject', buttonStyle.Secondary).custom_value(String(report.id))
+        makeButton('triage-approve', 'Approve', buttonStyle.Success).custom_value(String(report.id)),
+        makeButton('triage-reject', 'Reject', buttonStyle.Danger).custom_value(String(report.id))
       ),
   ]);
 }

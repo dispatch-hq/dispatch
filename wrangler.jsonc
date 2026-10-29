@@ -61,7 +61,9 @@
 				"DISCORD_PUBLIC_KEY": "d9ba7f51340f9e0aef3ce7224f3ddce364ff9ce12d28521408361ab365fb9a03",
 				"GITHUB_APP_ID": "5516473",
 				"GITHUB_APP_SLUG": "dispatch-beta-jakemackie",
-				"GITHUB_CLIENT_ID": "Iv23lirZfBUE9YtYsVLx"
+				"GITHUB_CLIENT_ID": "Iv23lirZfBUE9YtYsVLx",
+				// Message cards use this accent instead of the brand colour, so beta is easy to tell apart.
+				"ACCENT_COLOR": "84fada"
 			},
 
 			"d1_databases": [
