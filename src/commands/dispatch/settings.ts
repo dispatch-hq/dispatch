@@ -101,17 +101,24 @@ function settingsPanel(guild: GuildRow | null, warning?: string) {
   ]);
 }
 
+/**
+ * Discord rejects a text input pre-filled with an empty string, and the modal
+ * then fails with "didn't respond in time". An unset setting must send no value.
+ */
+function prefilled(input: ReturnType<typeof makeTextInput>, value: string) {
+  return value ? input.value(value) : input;
+}
+
 function settingsModal(guild: GuildRow | null) {
   const settings = { ...DEFAULTS, ...guild };
   return makeModal('settings-edit', 'Report settings', [
     makeLabel(
       'Issue labels',
-      makeTextInput('labels').value(settings.labels).placeholder('bug, from-discord').max_length(200).required(false)
+      prefilled(makeTextInput('labels'), settings.labels).placeholder('bug, from-discord').max_length(200).required(false)
     ).description('Added to every issue. Comma separated. Missing labels are created automatically.'),
     makeLabel(
       'Report types',
-      makeTextInput('types')
-        .value(settings.report_types)
+      prefilled(makeTextInput('types'), settings.report_types)
         .placeholder('Crash, UI, Performance, Other')
         .max_length(400)
         .required(false)

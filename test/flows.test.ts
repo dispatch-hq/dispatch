@@ -304,6 +304,23 @@ describe('settings panel', () => {
     expect(guild).toMatchObject({ triage_channel_id: IDS.triage, updates_channel_id: IDS.updates });
   });
 
+  it('opens the edit modal without sending empty pre-filled values', async () => {
+    // Discord rejects a modal containing `value: ""`, which shows up as "didn't respond in time".
+    const emptyValues = (node: any): number =>
+      !node || typeof node !== 'object'
+        ? 0
+        : (node.type === 4 && node.value === '' ? 1 : 0) + Object.values(node).reduce<number>((n, v) => n + emptyValues(v), 0);
+
+    for (const labels of ['bug', '']) {
+      w.sqlite.prepare('UPDATE guilds SET labels = ?').run(labels); // '' = an admin who cleared the labels
+      const res = await w.interact({ type: 3, ...w.base(IDS.admin, true), data: { custom_id: 'settings-edit', component_type: 2 } });
+      expect(res.json.type).toBe(9);
+      expect(res.json.data.custom_id).toBe('settings-edit');
+      expect(emptyValues(res.json.data)).toBe(0);
+    }
+    w.sqlite.prepare("UPDATE guilds SET labels = 'bug'").run();
+  });
+
   it('validates the cooldown in the edit modal', async () => {
     const res = await w.interact({
       type: 5,
