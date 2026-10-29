@@ -55,10 +55,11 @@ const LABELS: Record<Kind, string> = {
   success: 'All set',
 };
 
-export function messagePage(title: string, message: string, kind: Kind = 'info'): Page {
+export function messagePage(title: string, message: string, kind: Kind = 'info', another?: string): Page {
   const action =
     kind === 'success'
-      ? html`<a class="button large" href="https://discord.com/app">Open Discord <span aria-hidden="true">→</span></a>`
+      ? html`<a class="button large" href="https://discord.com/app">Open Discord <span aria-hidden="true">→</span></a>
+          ${another ? html`<a class="button large ghost" href="${another}">Add another repository</a>` : ''}`
       : html`<a class="button large ghost" href="/">Back to home</a>`;
 
   return {
@@ -77,7 +78,9 @@ export type RepoChoice = {
   private: boolean;
   description: string | null;
   language: string | null;
+  /** Signed grant to link it. Empty when it is already connected to this server. */
   token: string;
+  connected: boolean;
 };
 
 const searchIcon = raw(
@@ -90,29 +93,46 @@ function repoCard(repo: RepoChoice): Html {
   const search = `${repo.fullName} ${repo.description ?? ''} ${repo.language ?? ''}`.toLowerCase();
   return html`<form class="repo-form" method="post" action="/github/link" data-repo data-search="${search}">
     <input type="hidden" name="token" value="${repo.token}" />
-    <button class="repo-card" type="submit">
+    <button class="repo-card" type="submit" ${repo.connected ? raw('disabled aria-disabled="true"') : ''}>
       <span class="repo-head">
         <span class="repo-name">${repo.fullName}</span>
         ${repo.private ? html`<span class="chip">Private</span>` : ''}
+        ${repo.connected ? html`<span class="chip">Connected</span>` : ''}
       </span>
       <span class="repo-desc ${repo.description ? '' : 'none'}">${repo.description ?? 'No description'}</span>
       <span class="repo-foot">
         <span class="repo-lang">${repo.language ?? ''}</span>
-        <span class="repo-go">Connect <span aria-hidden="true">→</span></span>
+        <span class="repo-go">${repo.connected ? 'Already connected' : html`Connect <span aria-hidden="true">→</span>`}</span>
       </span>
     </button>
   </form>`;
 }
 
-export function repoPickerPage(opts: { login: string; repos: RepoChoice[]; installUrl: string }): Page {
+export type PickerMode = {
+  /** The server has Premium, so a new repository is added next to the existing ones. */
+  premium: boolean;
+  /** Repositories already connected to the server. */
+  connected: number;
+  max: number;
+};
+
+function intro({ premium, connected, max }: PickerMode): string {
+  if (premium) {
+    return `Bug reports from your server can go to any connected repository, and members choose which when they report. ${connected} of ${max} connected.`;
+  }
+  return connected
+    ? `Bug reports from your server will be filed in the repository you pick, which replaces ${connected === 1 ? 'the one' : 'the ones'} already connected. Dispatch Pro lets one server connect several.`
+    : 'Bug reports from your server will be filed as issues in the repository you pick.';
+}
+
+export function repoPickerPage(opts: { login: string; repos: RepoChoice[]; installUrl: string; mode: PickerMode }): Page {
   const total = opts.repos.length;
 
   const head = html`<div class="picker-head">
     <span class="index">Connect a repository</span>
     <h1 class="panel-title">Choose a <em>repository.</em></h1>
     <p class="lede">
-      Signed in as <strong>@${opts.login}</strong>. Bug reports from your server will be filed as issues in the
-      repository you pick.
+      Signed in as <strong>@${opts.login}</strong>. ${intro(opts.mode)}
     </p>
   </div>`;
 

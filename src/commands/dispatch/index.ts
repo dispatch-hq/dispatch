@@ -17,7 +17,7 @@ export const command_dispatch = factory.command(
   factory.subLoader(subs)
 );
 
-export { button_disconnect_cancel, button_disconnect_confirm } from './disconnect';
+export { button_disconnect_cancel, button_disconnect_confirm, select_disconnect_pick } from './disconnect';
 export {
   button_settings_dm,
   button_settings_edit,

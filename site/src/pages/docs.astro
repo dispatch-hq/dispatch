@@ -20,9 +20,9 @@ const commands = [
   ['/issues', 'Everyone', 'Your open reports across every server using Dispatch. Works in DMs too.'],
   ['/stats [member]', 'Everyone', 'Report counts and reward progress.'],
   ['/leaderboard', 'Everyone', 'Top reporters by fixed bugs.'],
-  ['/dispatch setup', 'Manage Server', 'Connect or change the GitHub repository.'],
+  ['/dispatch setup', 'Manage Server', 'Connect a GitHub repository. With Premium, add several; otherwise a new one replaces the old.'],
   ['/dispatch settings', 'Manage Server', 'Triage queue, updates channel, staff role, labels, report types, cooldown, reporter DMs.'],
-  ['/dispatch disconnect', 'Manage Server', 'Unlink the repository.'],
+  ['/dispatch disconnect', 'Manage Server', 'Unlink a repository.'],
   ['/dispatch rewards add / remove / list', 'Manage Server', 'Configure reward roles.'],
 ];
 
@@ -143,10 +143,10 @@ const problems = [
         <section id="permissions">
           <h2>Permissions and data</h2>
           <ul>
-            <li><b>GitHub App:</b> Issues (read and write) and Metadata (read-only), with webhooks for issue, comment and repository events. It uses a short-lived token scoped to the one linked repository.</li>
+            <li><b>GitHub App:</b> Issues (read and write) and Metadata (read-only), with webhooks for issue, comment and repository events. It uses a short-lived token scoped to the one repository an issue is filed in.</li>
             <li><b>Discord:</b> View Channel, Send Messages, Embed Links, Create Public Threads and Manage Roles. No message content access.</li>
             <li><b>Stored:</b> report text, the reporter’s Discord ID and username, and server settings, in Cloudflare D1. Attachments are kept in Cloudflare R2 and are public to anyone with the link. The GitHub issue includes the reporter’s Discord username and, for message reports, a link to the message.</li>
-            <li><b>Disconnecting:</b> <code>/dispatch disconnect</code>, or uninstalling the GitHub App, removes the repository link. Existing reports, settings and attachments stay stored, and nothing is deleted automatically yet.</li>
+            <li><b>Disconnecting:</b> <code>/dispatch disconnect</code>, or uninstalling the GitHub App, removes the repository link (only the repositories taken off the app, if it stays installed). Existing reports, settings and attachments stay stored, and nothing is deleted automatically yet.</li>
           </ul>
         </section>
 

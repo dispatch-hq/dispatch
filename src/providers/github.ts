@@ -1,5 +1,5 @@
 import { createAppJwt, importRsaPrivateKey } from '../lib/crypto';
-import type { Bindings, LinkedGuild } from '../types';
+import type { Bindings, GuildRepo } from '../types';
 import { ProviderError, type IssueProvider } from './types';
 
 const API = 'https://api.github.com';
@@ -83,10 +83,10 @@ export const github: IssueProvider = {
     return `https://github.com/${fullName}`;
   },
 
-  async createIssue(env, guild: LinkedGuild, input) {
-    const token = await installationToken(env, guild.installation_id, guild.repo_id);
+  async createIssue(env, repo: GuildRepo, input) {
+    const token = await installationToken(env, repo.installation_id, repo.repo_id);
     const issue = await request<{ number: number; html_url: string }>(
-      `/repos/${guild.repo_full_name}/issues`,
+      `/repos/${repo.repo_full_name}/issues`,
       `Bearer ${token}`,
       { method: 'POST', body: input }
     );

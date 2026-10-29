@@ -2,7 +2,7 @@ import { Hono, type Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { LinkState } from '../commands/dispatch/setup';
 import { LINK_TTL_SECONDS } from '../commands/dispatch/setup';
-import { linkRepository } from '../db';
+import { getGuildRepos, linkRepository, MAX_REPOS_PER_GUILD, type LinkOutcome } from '../db';
 import { signToken, verifyGitHubSignature, verifyToken } from '../lib/crypto';
 import { notice } from '../lib/ui';
 import { ProviderError } from '../providers';
@@ -60,23 +60,38 @@ githubRoutes.get('/callback', async (c) => {
 
   try {
     const userToken = await exchangeOAuthCode(c.env, code);
-    const { user, repos } = await listWritableRepos(userToken);
+    const [{ user, repos }, linked] = await Promise.all([listWritableRepos(userToken), getGuildRepos(c.env.DB, claims.g)]);
+    const connected = new Set(linked.map((r) => r.repo_id));
 
     const choices = await Promise.all(
-      repos.slice(0, MAX_REPOS).map(async (repo) => ({
-        fullName: repo.fullName,
-        private: repo.private,
-        description: repo.description,
-        language: repo.language,
-        token: await signToken<RepoGrant>(
-          c.env.STATE_SECRET,
-          { g: claims.g, u: claims.u, i: repo.installationId, r: repo.repoId, n: repo.fullName },
-          LINK_TTL_SECONDS
-        ),
-      }))
+      repos.slice(0, MAX_REPOS).map(async (repo) => {
+        const already = connected.has(repo.repoId);
+        return {
+          fullName: repo.fullName,
+          private: repo.private,
+          description: repo.description,
+          language: repo.language,
+          connected: already,
+          token: already
+            ? ''
+            : await signToken<RepoGrant>(
+                c.env.STATE_SECRET,
+                { g: claims.g, u: claims.u, p: claims.p, i: repo.installationId, r: repo.repoId, n: repo.fullName },
+                LINK_TTL_SECONDS
+              ),
+        };
+      })
     );
 
-    return respond(c, repoPickerPage({ login: user.login, repos: choices, installUrl: githubInstallUrl(c.env, state) }));
+    return respond(
+      c,
+      repoPickerPage({
+        login: user.login,
+        repos: choices,
+        installUrl: githubInstallUrl(c.env, state),
+        mode: { premium: !!claims.p, connected: linked.length, max: MAX_REPOS_PER_GUILD },
+      })
+    );
   } catch (error) {
     console.error('github callback failed', error);
     const detail =
@@ -92,28 +107,70 @@ githubRoutes.post('/link', async (c) => {
   const grant = await verifyToken<RepoGrant>(c.env.STATE_SECRET, String(form.token ?? ''));
   if (!grant) return respond(c, expired(), 400);
 
-  await linkRepository(c.env.DB, {
-    guildId: grant.g,
-    provider: 'github',
-    installationId: grant.i,
-    repoId: grant.r,
-    fullName: grant.n,
-    linkedBy: grant.u,
-  });
+  const outcome = await linkRepository(
+    c.env.DB,
+    {
+      guildId: grant.g,
+      provider: 'github',
+      installationId: grant.i,
+      repoId: grant.r,
+      fullName: grant.n,
+      linkedBy: grant.u,
+    },
+    !!grant.p
+  );
+
+  if (outcome === 'limit') {
+    return respond(
+      c,
+      messagePage(
+        'Repository limit reached',
+        `A server can connect up to ${MAX_REPOS_PER_GUILD} repositories. Run /dispatch disconnect in Discord to remove one, then try again.`,
+        'error'
+      ),
+      409
+    );
+  }
 
   c.executionCtx.waitUntil(
     sendDirectMessage(c.env, grant.u, [
       notice(
-        `### Repository connected\nBug reports from your server will now be filed in **[${grant.n}](https://github.com/${grant.n})**.\nNext: \`/dispatch settings\` to add a triage queue or updates channel, and \`/dispatch rewards add\` to reward great reporters.`
+        `### Repository connected
+${dmCopy(outcome, grant.n)}
+Next: \`/dispatch settings\` to add a triage queue or updates channel, and \`/dispatch rewards add\` to reward great reporters.`
       ),
     ])
   );
 
+  // Premium servers can keep going: a fresh link back into the picker, reusing the GitHub sign-in.
+  const another = grant.p
+    ? githubAuthorizeUrl(c.env, await signToken<LinkState>(c.env.STATE_SECRET, { g: grant.g, u: grant.u, p: true }, LINK_TTL_SECONDS))
+    : undefined;
+
   return respond(
     c,
-    messagePage('Repository connected', `Bug reports will be filed in ${grant.n}. You can close this tab and head back to Discord.`, 'success')
+    messagePage(
+      'Repository connected',
+      outcome === 'added'
+        ? `${grant.n} was added. Members can now choose it when they report a bug. You can close this tab and head back to Discord.`
+        : `Bug reports will be filed in ${grant.n}. You can close this tab and head back to Discord.`,
+      'success',
+      another
+    )
   );
 });
+
+function dmCopy(outcome: LinkOutcome, name: string): string {
+  const link = `**[${name}](https://github.com/${name})**`;
+  switch (outcome) {
+    case 'added':
+      return `${link} was added to your server's repositories. Members choose which one to report to.`;
+    case 'replaced':
+      return `Bug reports from your server will now be filed in ${link}, replacing the previous repository.`;
+    default:
+      return `Bug reports from your server will now be filed in ${link}.`;
+  }
+}
 
 githubRoutes.post('/webhook', async (c) => {
   const body = await c.req.text();

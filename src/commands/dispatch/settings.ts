@@ -5,21 +5,21 @@ import {
   makeButton,
   makeChannelSelect,
   makeLabel,
-  makeLinkButton,
-  makeModal,
+    makeModal,
   makeRoleSelect,
   makeSubCommand,
   makeTextInput,
 } from 'discord-hono';
-import { getGuild, isLinked, updateSettings, type GuildSettings } from '../../db';
+import { getGuild, getGuildRepos, updateSettings, type GuildSettings } from '../../db';
 import { escapeMarkdown, MAX_REPORT_TYPES, parseLabels, parseReportTypes } from '../../lib/format';
 import { canManageGuild } from '../../lib/permissions';
 import { card, divider, EPHEMERAL_V2, notice, row, section, text, view } from '../../lib/ui';
 import { factory } from '../../init';
-import { getProvider } from '../../providers';
 import { sendChannelMessage } from '../../services/discord';
-import type { Bindings, GuildRow } from '../../types';
+import { hasPremium } from '../../services/premium';
+import type { Bindings, GuildRepo, GuildRow } from '../../types';
 import { deny, inGuild, messages } from '../shared';
+import { repoLines } from './setup';
 
 const TEXT_CHANNELS = [channelType.GUILD_TEXT, channelType.GUILD_ANNOUNCEMENT];
 
@@ -45,14 +45,11 @@ function channelSelect(
   return current ? select.default_values([{ id: current, type: 'channel' as SelectMenuDefaultValueType.Channel }]) : select;
 }
 
-function settingsPanel(guild: GuildRow | null, warning?: string) {
+function settingsPanel(env: Bindings, guild: GuildRow | null, repos: GuildRepo[], premium: boolean, warning?: string) {
   const settings = { ...DEFAULTS, ...guild };
-  const repo = isLinked(guild)
-    ? section(
-        `Repository **${guild.repo_full_name}**`,
-        makeLinkButton(getProvider(guild.provider).repoUrl(guild.repo_full_name), 'Open')
-      )
-    : text('Repository *not connected* — run `/dispatch setup`');
+  const repo = repos.length
+    ? [text(repos.length === 1 ? '**Repository**' : `**Repositories** (${repos.length})`), ...repoLines(repos, premium)]
+    : [text('Repository *not connected* — run `/dispatch setup`')];
 
   // Discord keeps a select's local value across message edits when the
   // custom_id is unchanged, so re-picking the same channel after a failed save
@@ -68,7 +65,7 @@ function settingsPanel(guild: GuildRow | null, warning?: string) {
 
   return card([
     text('## Settings'),
-    repo,
+    ...repo,
     warning ? text(`**${warning}**`) : null,
     divider(),
     text('### Triage queue\nNew reports wait here for staff approval before reaching the repository, each with a thread for discussion. Leave empty to file issues immediately.'),
@@ -130,6 +127,18 @@ function settingsModal(guild: GuildRow | null) {
   ]);
 }
 
+/** The panel with the server's current repositories and Premium status. */
+async function panelFor(
+  env: Bindings,
+  interaction: Parameters<typeof hasPremium>[1],
+  guildId: string,
+  guild: GuildRow | null,
+  warning?: string
+) {
+  const repos = await getGuildRepos(env.DB, guildId);
+  return settingsPanel(env, guild, repos, hasPremium(env, interaction, guildId), warning);
+}
+
 /** Confirms the bot can post in a channel by announcing its new role there. */
 async function claimChannel(env: Bindings, channelId: string, purpose: string): Promise<boolean> {
   const id = await sendChannelMessage(env, channelId, [notice(`This channel is now Dispatch's **${purpose}**.`)]);
@@ -151,7 +160,7 @@ export const sub_settings = factory.subCommand(
     const ctx = inGuild(c.interaction);
     if (!ctx) return deny(c, messages.guildOnly);
     const guild = await getGuild(c.env.DB, ctx.guildId);
-    return c.flags(...EPHEMERAL_V2).res(view([settingsPanel(guild)]));
+    return c.flags(...EPHEMERAL_V2).res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild)]));
   }
 );
 
@@ -170,7 +179,7 @@ function channelHandler(field: 'triage_channel_id' | 'updates_channel_id', purpo
     const warning = ok
       ? undefined
       : `I can't post in <#${channelId}>. Give Dispatch **View Channel** and **Send Messages** there, then pick it again.`;
-    return c.flags(...EPHEMERAL_V2).update().res(view([settingsPanel(guild, warning)]));
+    return c.flags(...EPHEMERAL_V2).update().res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild, warning)]));
   };
 }
 
@@ -190,7 +199,7 @@ export const select_settings_staff = factory.component(makeRoleSelect('settings-
   if (!canManageGuild(ctx.member)) return deny(c, messages.adminOnly);
 
   const guild = await applySettings(c.env, ctx.guildId, { staff_role_id: c.ref.values?.[0] ?? null });
-  return c.flags(...EPHEMERAL_V2).update().res(view([settingsPanel(guild)]));
+  return c.flags(...EPHEMERAL_V2).update().res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild)]));
 });
 
 export const button_settings_dm = factory.component(makeButton('settings-dm', 'Toggle DMs'), async (c) => {
@@ -200,7 +209,7 @@ export const button_settings_dm = factory.component(makeButton('settings-dm', 'T
 
   const current = await getGuild(c.env.DB, ctx.guildId);
   const guild = await applySettings(c.env, ctx.guildId, { dm_reporters: (current?.dm_reporters ?? 1) ? 0 : 1 });
-  return c.flags(...EPHEMERAL_V2).update().res(view([settingsPanel(guild)]));
+  return c.flags(...EPHEMERAL_V2).update().res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild)]));
 });
 
 export const button_settings_edit = factory.component(makeButton('settings-edit', 'Edit'), async (c) => {
@@ -222,7 +231,7 @@ export const modal_settings_edit = factory.modal(settingsModal(null), async (c) 
     return c
       .flags(...EPHEMERAL_V2)
       .update()
-      .res(view([settingsPanel(guild, 'Cooldown must be a whole number of seconds between 0 and 3600.')]));
+      .res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild, 'Cooldown must be a whole number of seconds between 0 and 3600.')]));
   }
 
   // Say so rather than silently dropping types past the limit.
@@ -232,7 +241,7 @@ export const modal_settings_edit = factory.modal(settingsModal(null), async (c) 
     return c
       .flags(...EPHEMERAL_V2)
       .update()
-      .res(view([settingsPanel(guild, `Use at most ${MAX_REPORT_TYPES} report types (you entered ${typeCount}).`)]));
+      .res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild, `Use at most ${MAX_REPORT_TYPES} report types (you entered ${typeCount}).`)]));
   }
 
   const guild = await applySettings(c.env, ctx.guildId, {
@@ -240,5 +249,5 @@ export const modal_settings_edit = factory.modal(settingsModal(null), async (c) 
     report_types: parseReportTypes(c.var.types ?? '').join(', '),
     cooldown_seconds: cooldown,
   });
-  return c.flags(...EPHEMERAL_V2).update().res(view([settingsPanel(guild)]));
+  return c.flags(...EPHEMERAL_V2).update().res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild)]));
 });

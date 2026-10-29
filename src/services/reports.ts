@@ -10,7 +10,7 @@ import {
 import { escapeMarkdown, isImage, issueBody, issueTitle, parseLabels, truncate } from '../lib/format';
 import { card, divider, notice, row, section, text, type Container } from '../lib/ui';
 import { getProvider, ProviderError, type CreatedIssue } from '../providers';
-import type { Bindings, GuildRow, LinkedGuild, ReportRow } from '../types';
+import type { Bindings, GuildRepo, GuildRow, ReportRow } from '../types';
 import { sendChannelMessage, sendDirectMessage, startThread } from './discord';
 
 /* -------------------------------------------------------------------------- */
@@ -29,7 +29,7 @@ function statusLine(report: ReportRow, error?: string): string {
   if (error) return `**Couldn't create the issue**\n${error}`;
   switch (report.status) {
     case 'pending':
-      return '**Awaiting review**';
+      return report.repo_full_name ? `**Awaiting review** · for ${report.repo_full_name}` : '**Awaiting review**';
     case 'rejected':
       return `**Rejected** by <@${report.reviewed_by}>${report.review_note ? `\n> ${truncate(report.review_note, 300)}` : ''}`;
     case 'open':
@@ -110,6 +110,15 @@ export function receiptCard(
 /*                                  Pipeline                                  */
 /* -------------------------------------------------------------------------- */
 
+/** Why a report can't be filed in the repository it was meant for, or null if it can. */
+export function repoUnavailable(repo: GuildRepo | null | undefined, premium: boolean, primary: GuildRepo | undefined): string | null {
+  if (!repo) return 'That repository has been disconnected from this server.';
+  if (!premium && primary && repo.id !== primary.id) {
+    return `**${repo.repo_full_name}** is paused because this server no longer has Dispatch Pro.`;
+  }
+  return null;
+}
+
 export function describeError(error: unknown): string {
   if (error instanceof ProviderError) {
     if (error.status === 404 || error.status === 403) {
@@ -123,9 +132,14 @@ export function describeError(error: unknown): string {
 }
 
 /** Creates the issue for a report and records it. Throws `ProviderError` on failure. */
-export async function publishReport(env: Bindings, guild: LinkedGuild, report: ReportRow): Promise<ReportRow> {
-  const provider = getProvider(guild.provider);
-  const issue = await provider.createIssue(env, guild, {
+export async function publishReport(
+  env: Bindings,
+  guild: GuildRow,
+  repo: GuildRepo,
+  report: ReportRow
+): Promise<ReportRow> {
+  const provider = getProvider(repo.provider);
+  const issue = await provider.createIssue(env, repo, {
     title: issueTitle(report),
     body: issueBody(report, parseAttachments(report), env.PUBLIC_URL),
     // The server's base labels, plus the type the reporter picked (if any).
@@ -133,9 +147,9 @@ export async function publishReport(env: Bindings, guild: LinkedGuild, report: R
   });
 
   await markPublished(env.DB, report.id, {
-    provider: guild.provider,
-    repoId: guild.repo_id,
-    fullName: guild.repo_full_name,
+    provider: repo.provider,
+    repoId: repo.repo_id,
+    fullName: repo.repo_full_name,
     number: issue.number,
     url: issue.url,
   });
@@ -143,9 +157,9 @@ export async function publishReport(env: Bindings, guild: LinkedGuild, report: R
   return {
     ...report,
     status: 'open',
-    provider: guild.provider,
-    repo_id: guild.repo_id,
-    repo_full_name: guild.repo_full_name,
+    provider: repo.provider,
+    repo_id: repo.repo_id,
+    repo_full_name: repo.repo_full_name,
     issue_number: issue.number,
     issue_url: issue.url,
   };
@@ -163,10 +177,11 @@ export type SubmitOutcome =
 export async function submitReport(
   env: Bindings,
   ctx: { waitUntil(promise: Promise<unknown>): void },
-  guild: LinkedGuild,
-  input: NewReport
+  guild: GuildRow,
+  repo: GuildRepo,
+  input: Omit<NewReport, 'repo'>
 ): Promise<SubmitOutcome> {
-  const report = await createReport(env.DB, input);
+  const report = await createReport(env.DB, { ...input, repo });
 
   if (guild.triage_channel_id) {
     const messageId = await sendChannelMessage(env, guild.triage_channel_id, [reportCard(report)]);
@@ -183,7 +198,7 @@ export async function submitReport(
   }
 
   try {
-    const published = await publishReport(env, guild, report);
+    const published = await publishReport(env, guild, repo, report);
     ctx.waitUntil(announce(env, guild, published, 'published'));
     return {
       kind: 'published',

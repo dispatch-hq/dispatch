@@ -21,6 +21,12 @@ export type Bindings = {
 
   /** Random secret used to sign OAuth state and link tokens */
   STATE_SECRET: string;
+
+  /**
+   * Discord SKU id of the Premium subscription (Developer Portal → Monetization).
+   * Unset means any active entitlement for this application counts as Premium.
+   */
+  PREMIUM_SKU_ID?: string;
 };
 
 export type AppEnv = {
@@ -31,12 +37,6 @@ export type Provider = 'github';
 
 export type GuildRow = {
   guild_id: string;
-  provider: Provider | null;
-  installation_id: number | null;
-  repo_id: number | null;
-  repo_full_name: string | null;
-  linked_by: string | null;
-  linked_at: string | null;
   triage_channel_id: string | null;
   updates_channel_id: string | null;
   staff_role_id: string | null;
@@ -49,12 +49,17 @@ export type GuildRow = {
   updated_at: string;
 };
 
-/** A guild whose repository link is complete. */
-export type LinkedGuild = GuildRow & {
+/** A repository linked to a server. The oldest link is the server's primary repository. */
+export type GuildRepo = {
+  /** Handle used in Discord custom_ids; stable until the repository is disconnected. */
+  id: number;
+  guild_id: string;
   provider: Provider;
   installation_id: number;
   repo_id: number;
   repo_full_name: string;
+  linked_by: string | null;
+  linked_at: string;
 };
 
 export type ReportStatus = 'pending' | 'rejected' | 'open' | 'fixed' | 'closed';

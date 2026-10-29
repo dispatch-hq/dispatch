@@ -1,10 +1,11 @@
 import { makeButton, makeLabel, makeModal, makeTextInput, textInputStyle } from 'discord-hono';
-import { claimPendingReport, getGuild, getReport, isLinked, releaseReport } from '../db';
+import { claimPendingReport, getGuild, getGuildRepos, getReport, releaseReport } from '../db';
 import { clean } from '../lib/format';
 import { canTriage } from '../lib/permissions';
 import { PUBLIC_V2, view } from '../lib/ui';
 import { factory } from '../init';
-import { announce, describeError, publishReport, reportCard } from '../services/reports';
+import { hasPremium } from '../services/premium';
+import { announce, describeError, publishReport, repoUnavailable, reportCard } from '../services/reports';
 import { deny, guarded, inGuild, messages } from './shared';
 
 /**
@@ -39,7 +40,14 @@ export const button_triage_approve = factory.component(
     const { guild, report } = await loadForReview(c.env.DB, ctx.guildId, reportId);
     if (!guild || !report) return deny(c, 'That report no longer exists.');
     if (!canTriage(ctx.member, guild)) return deny(c, messages.staffOnly);
-    if (!isLinked(guild)) return deny(c, messages.notLinked);
+
+    // The repository the reporter chose. Reports queued before servers could have
+    // several repositories carry none, and go to the primary one.
+    const repos = await getGuildRepos(c.env.DB, ctx.guildId);
+    if (!repos.length) return deny(c, messages.notLinked);
+    const repo = report.repo_id ? repos.find((r) => r.provider === report.provider && r.repo_id === report.repo_id) : repos[0];
+    const unavailable = repoUnavailable(repo, hasPremium(c.env, c.interaction, ctx.guildId), repos[0]);
+    if (unavailable || !repo) return deny(c, unavailable ?? messages.notLinked);
 
     const claimed = await claimPendingReport(c.env.DB, reportId, 'open', ctx.member.user.id);
     if (!claimed) {
@@ -54,7 +62,7 @@ export const button_triage_approve = factory.component(
         guarded(async (c) => {
           const claimedReport = { ...report, reviewed_by: ctx.member.user.id };
           try {
-            const published = await publishReport(c.env, guild, claimedReport);
+            const published = await publishReport(c.env, guild, repo, claimedReport);
             await c.followup(view([reportCard(published)]));
             await announce(c.env, guild, published, 'approved');
           } catch (error) {

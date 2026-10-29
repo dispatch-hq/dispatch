@@ -1,7 +1,7 @@
 import type {
   Attachment,
+  GuildRepo,
   GuildRow,
-  LinkedGuild,
   Provider,
   ReportRow,
   ReportStatus,
@@ -16,52 +16,97 @@ export function getGuild(db: D1Database, guildId: string) {
   return db.prepare(`SELECT * FROM guilds WHERE guild_id = ?`).bind(guildId).first<GuildRow>();
 }
 
-export function isLinked(guild: GuildRow | null): guild is LinkedGuild {
-  return !!guild?.provider && !!guild.installation_id && !!guild.repo_id && !!guild.repo_full_name;
-}
+/* -------------------------------------------------------------------------- */
+/*                                Repositories                                */
+/* -------------------------------------------------------------------------- */
 
-export async function getLinkedGuild(db: D1Database, guildId: string) {
-  const guild = await getGuild(db, guildId);
-  return isLinked(guild) ? guild : null;
-}
+/** Most repositories a Premium server can connect. */
+export const MAX_REPOS_PER_GUILD = 10;
 
-export function linkRepository(
-  db: D1Database,
-  link: {
-    guildId: string;
-    provider: Provider;
-    installationId: number;
-    repoId: number;
-    fullName: string;
-    linkedBy: string;
-  }
-) {
+/** Linked repositories, oldest first. The first is the server's primary repository. */
+export function getGuildRepos(db: D1Database, guildId: string) {
   return db
-    .prepare(
-      `INSERT INTO guilds (guild_id, provider, installation_id, repo_id, repo_full_name, linked_by, linked_at)
-       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-       ON CONFLICT (guild_id) DO UPDATE SET
-         provider = excluded.provider,
-         installation_id = excluded.installation_id,
-         repo_id = excluded.repo_id,
-         repo_full_name = excluded.repo_full_name,
-         linked_by = excluded.linked_by,
-         linked_at = excluded.linked_at,
-         updated_at = CURRENT_TIMESTAMP`
-    )
-    .bind(link.guildId, link.provider, link.installationId, link.repoId, link.fullName, link.linkedBy)
-    .run();
-}
-
-export function unlinkRepository(db: D1Database, guildId: string) {
-  return db
-    .prepare(
-      `UPDATE guilds SET provider = NULL, installation_id = NULL, repo_id = NULL,
-         repo_full_name = NULL, linked_by = NULL, linked_at = NULL, updated_at = CURRENT_TIMESTAMP
-       WHERE guild_id = ?`
-    )
+    .prepare(`SELECT * FROM guild_repos WHERE guild_id = ? ORDER BY id ASC`)
     .bind(guildId)
-    .run();
+    .all<GuildRepo>()
+    .then((r) => r.results);
+}
+
+export function getGuildRepo(db: D1Database, guildId: string, id: number) {
+  return db.prepare(`SELECT * FROM guild_repos WHERE guild_id = ? AND id = ?`).bind(guildId, id).first<GuildRepo>();
+}
+
+export function getGuildRepoByProviderId(db: D1Database, guildId: string, provider: Provider, repoId: number) {
+  return db
+    .prepare(`SELECT * FROM guild_repos WHERE guild_id = ? AND provider = ? AND repo_id = ?`)
+    .bind(guildId, provider, repoId)
+    .first<GuildRepo>();
+}
+
+export type RepoLink = {
+  guildId: string;
+  provider: Provider;
+  installationId: number;
+  repoId: number;
+  fullName: string;
+  linkedBy: string;
+};
+
+export type LinkOutcome =
+  /** First repository for the server. */
+  | 'linked'
+  /** Added next to the existing ones (Premium). */
+  | 'added'
+  /** Already linked; its installation and name were refreshed. */
+  | 'refreshed'
+  /** Replaced the previous repositories (no Premium). */
+  | 'replaced'
+  /** Premium server is at `MAX_REPOS_PER_GUILD`. */
+  | 'limit';
+
+/**
+ * Connects a repository. With `multiple` (Premium) it is added alongside the
+ * server's existing ones; without, it replaces them, so a free server keeps
+ * exactly one.
+ */
+export async function linkRepository(db: D1Database, link: RepoLink, multiple: boolean): Promise<LinkOutcome> {
+  const existing = await getGuildRepos(db, link.guildId);
+  const current = existing.find((r) => r.provider === link.provider && r.repo_id === link.repoId);
+  const others = existing.filter((r) => r !== current);
+
+  if (multiple && !current && existing.length >= MAX_REPOS_PER_GUILD) return 'limit';
+
+  // Settings live on the guild row; make sure it exists for servers that link before configuring anything.
+  const ensureGuild = db.prepare(`INSERT OR IGNORE INTO guilds (guild_id) VALUES (?)`).bind(link.guildId);
+  const upsert = db
+    .prepare(
+      `INSERT INTO guild_repos (guild_id, provider, installation_id, repo_id, repo_full_name, linked_by)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (guild_id, provider, repo_id) DO UPDATE SET
+         installation_id = excluded.installation_id,
+         repo_full_name = excluded.repo_full_name,
+         linked_by = excluded.linked_by`
+    )
+    .bind(link.guildId, link.provider, link.installationId, link.repoId, link.fullName, link.linkedBy);
+
+  if (!multiple && others.length) {
+    await db.batch([
+      ensureGuild,
+      db.prepare(`DELETE FROM guild_repos WHERE guild_id = ? AND NOT (provider = ? AND repo_id = ?)`).bind(link.guildId, link.provider, link.repoId),
+      upsert,
+    ]);
+    return 'replaced';
+  }
+
+  await db.batch([ensureGuild, upsert]);
+  if (current) return 'refreshed';
+  return existing.length ? 'added' : 'linked';
+}
+
+/** Disconnects one repository. Returns false if it was already gone. */
+export async function unlinkRepository(db: D1Database, guildId: string, id: number) {
+  const result = await db.prepare(`DELETE FROM guild_repos WHERE guild_id = ? AND id = ?`).bind(guildId, id).run();
+  return result.meta.changes > 0;
 }
 
 export type GuildSettings = Partial<
@@ -99,20 +144,14 @@ export function updateSettings(db: D1Database, guildId: string, settings: GuildS
 export function unlinkByInstallation(db: D1Database, provider: Provider, installationId: number, repoIds?: number[]) {
   const repoFilter = repoIds?.length ? `AND repo_id IN (${repoIds.map(() => '?').join(', ')})` : '';
   return db
-    .prepare(
-      `UPDATE guilds SET provider = NULL, installation_id = NULL, repo_id = NULL,
-         repo_full_name = NULL, linked_by = NULL, linked_at = NULL, updated_at = CURRENT_TIMESTAMP
-       WHERE provider = ? AND installation_id = ? ${repoFilter}`
-    )
+    .prepare(`DELETE FROM guild_repos WHERE provider = ? AND installation_id = ? ${repoFilter}`)
     .bind(provider, installationId, ...(repoIds ?? []))
     .run();
 }
 
 export function renameRepository(db: D1Database, provider: Provider, repoId: number, fullName: string) {
   return db.batch([
-    db
-      .prepare(`UPDATE guilds SET repo_full_name = ?, updated_at = CURRENT_TIMESTAMP WHERE provider = ? AND repo_id = ?`)
-      .bind(fullName, provider, repoId),
+    db.prepare(`UPDATE guild_repos SET repo_full_name = ? WHERE provider = ? AND repo_id = ?`).bind(fullName, provider, repoId),
     db
       .prepare(`UPDATE reports SET repo_full_name = ? WHERE provider = ? AND repo_id = ?`)
       .bind(fullName, provider, repoId),
@@ -142,13 +181,16 @@ export type NewReport = {
   sourceUrl: string | null;
   reportType: string | null;
   attachments: Attachment[];
+  /** The repository the issue will be filed in. */
+  repo: Pick<GuildRepo, 'provider' | 'repo_id' | 'repo_full_name'>;
 };
 
 export async function createReport(db: D1Database, report: NewReport): Promise<ReportRow> {
   const row = await db
     .prepare(
-      `INSERT INTO reports (guild_id, reporter_id, reporter_name, title, description, steps, environment, source_url, report_type, attachments)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO reports (guild_id, reporter_id, reporter_name, title, description, steps, environment, source_url, report_type, attachments,
+         provider, repo_id, repo_full_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING *`
     )
     .bind(
@@ -161,7 +203,10 @@ export async function createReport(db: D1Database, report: NewReport): Promise<R
       report.environment,
       report.sourceUrl,
       report.reportType,
-      JSON.stringify(report.attachments)
+      JSON.stringify(report.attachments),
+      report.repo.provider,
+      report.repo.repo_id,
+      report.repo.repo_full_name
     )
     .first<ReportRow>();
   if (!row) throw new Error('Failed to insert report');
@@ -322,8 +367,9 @@ export function getRecentReports(db: D1Database, guildId: string, reporterId: st
  * repository connected, newest first. `total` is the unpaged count.
  */
 export async function getActiveIssues(db: D1Database, reporterId: string, limit: number, offset: number) {
-  const where = `FROM reports r JOIN guilds g ON g.guild_id = r.guild_id
-    WHERE r.reporter_id = ? AND r.status = 'open' AND g.repo_id IS NOT NULL`;
+  const where = `FROM reports r
+    WHERE r.reporter_id = ? AND r.status = 'open'
+      AND EXISTS (SELECT 1 FROM guild_repos gr WHERE gr.guild_id = r.guild_id)`;
   const [page, count] = await Promise.all([
     db
       .prepare(`SELECT r.* ${where} ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?`)

@@ -45,9 +45,9 @@ const trust = [
   },
   {
     title: 'Repository scope',
-    body: 'Dispatch touches one repository per server.',
+    body: 'Dispatch only touches the repositories you connect: one per server, or several with Premium.',
     points: [
-      'Each request uses a short-lived GitHub token scoped to the single linked repository.',
+      'Each request uses a short-lived GitHub token scoped to the single repository the issue is filed in.',
       'To link a repo, an admin signs in with GitHub and must have push access to it, so nobody can point reports at a repository they do not control.',
     ],
   },
@@ -74,9 +74,9 @@ const commands = [
   { name: 'issues', icon: '/', category: 'Reporting', key: true, desc: 'Your open reports across every server using Dispatch. Works in DMs too.' },
   { name: 'stats', icon: '/', category: 'Community', desc: 'Report counts and reward progress for you or another member.' },
   { name: 'leaderboard', icon: '/', category: 'Community', desc: 'The top bug reporters in this server.' },
-  { name: 'dispatch setup', icon: '/', category: 'Setup', admin: true, key: true, desc: 'Connect a GitHub repository to this server.' },
+  { name: 'dispatch setup', icon: '/', category: 'Setup', admin: true, key: true, desc: 'Connect GitHub repositories to this server. Premium servers can connect several.' },
   { name: 'dispatch settings', icon: '/', category: 'Setup', admin: true, key: true, desc: 'Triage queue, updates channel, staff role, labels and cooldown.' },
-  { name: 'dispatch disconnect', icon: '/', category: 'Setup', admin: true, desc: 'Unlink the connected repository.' },
+  { name: 'dispatch disconnect', icon: '/', category: 'Setup', admin: true, desc: 'Unlink a connected repository.' },
   { name: 'dispatch rewards add', icon: '/', category: 'Rewards', admin: true, desc: 'Grant a role once a member has enough fixed bug reports.' },
   { name: 'dispatch rewards remove', icon: '/', category: 'Rewards', admin: true, desc: 'Stop granting a reward role.' },
   { name: 'dispatch rewards list', icon: '/', category: 'Rewards', admin: true, desc: 'Show every reward role and its threshold.' },
@@ -118,7 +118,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
             <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
             <a class="button large ghost" href="#how">How it works</a>
           </div>
-          <p class="assure">Access limited to one repository · <a href="#trust">See exactly what it can do</a></p>
+          <p class="assure">Access limited to the repositories you connect · <a href="#trust">See exactly what it can do</a></p>
         </div>
 
         <div class="carousel" role="region" aria-roledescription="carousel" aria-label="A bug report, start to finish" tabindex="0">

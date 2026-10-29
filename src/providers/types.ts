@@ -1,4 +1,4 @@
-import type { Bindings, LinkedGuild, Provider } from '../types';
+import type { Bindings, GuildRepo, Provider } from '../types';
 
 export type IssueInput = {
   title: string;
@@ -21,7 +21,7 @@ export interface IssueProvider {
   readonly id: Provider;
   readonly name: string;
   repoUrl(fullName: string): string;
-  createIssue(env: Bindings, guild: LinkedGuild, input: IssueInput): Promise<CreatedIssue>;
+  createIssue(env: Bindings, repo: GuildRepo, input: IssueInput): Promise<CreatedIssue>;
 }
 
 export class ProviderError extends Error {

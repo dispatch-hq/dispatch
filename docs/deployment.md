@@ -37,7 +37,8 @@ In the [Developer Portal](https://discord.com/developers/applications):
 1. Copy the **Application ID** and **Public Key** into `wrangler.jsonc` (`DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`).
 2. **Bot → Reset Token** and store it as the `DISCORD_TOKEN` secret (step 4). No privileged intents are needed.
 3. After the first deploy, set **Interactions Endpoint URL** to `PUBLIC_URL/interactions`.
-4. Invite the bot with the *Add to Discord* button on `PUBLIC_URL`. It asks for *View Channel*, *Send Messages*, *Embed Links*, *Manage Roles* and *Create Public Threads* (for the discussion thread on each triage report; without it, reports are still queued, just without a thread). Servers that added the bot earlier can grant *Create Public Threads* on the triage channel, or re-invite it.
+4. **Premium (optional):** under **Monetization**, create a *Guild Subscription* SKU, then set its id as `PREMIUM_SKU_ID` under `vars` in `wrangler.jsonc`. Servers that subscribe can connect several repositories (`/dispatch setup`) and members choose which one a bug is for. With the variable unset, any active entitlement for the app counts, but the in-app Premium button is hidden. Test entitlements from the Developer Portal work the same as paid ones.
+5. Invite the bot with the *Add to Discord* button on `PUBLIC_URL`. It asks for *View Channel*, *Send Messages*, *Embed Links*, *Manage Roles* and *Create Public Threads* (for the discussion thread on each triage report; without it, reports are still queued, just without a thread). Servers that added the bot earlier can grant *Create Public Threads* on the triage channel, or re-invite it.
 
 > For reward roles, Dispatch's own role must sit **above** every reward role in *Server Settings → Roles*. Otherwise Discord refuses the assignment, and `/dispatch rewards add` tells you so.
 

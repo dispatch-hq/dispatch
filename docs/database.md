@@ -6,8 +6,9 @@ Dispatch stores its state in **Cloudflare D1** (serverless SQLite), bound as `DB
 
 | Table | One row per | Notes |
 | --- | --- | --- |
-| `guilds` | Discord server | Linked repository (`provider`, `installation_id`, `repo_id`, `repo_full_name`) plus settings (triage/updates channels, staff role, labels, report types, cooldown, reporter DMs). Repository columns are `NULL` when nothing is linked; settings survive unlinking. |
-| `reports` | Bug report | Submitted content, rehosted attachments (JSON), status, and the issue it became. Indexed by `(provider, repo_id, issue_number)` for webhook lookups. |
+| `guilds` | Discord server | Settings (triage/updates channels, staff role, labels, report types, cooldown, reporter DMs). Survive unlinking. The `provider`/`installation_id`/`repo_*` columns from migration 0002 are no longer read; links live in `guild_repos`. |
+| `guild_repos` | Linked repository | One row per repository connected to a server (`provider`, `installation_id`, `repo_id`, `repo_full_name`). The oldest row is the server's primary repository. Servers without Premium keep exactly one; Premium servers can connect up to 10. |
+| `reports` | Bug report | Submitted content, rehosted attachments (JSON), status, the repository it targets (set when submitted, so queued reports know where to go), and the issue it became. Indexed by `(provider, repo_id, issue_number)` for webhook lookups. |
 | `report_drafts` | Pending "Report bug" | The text of a message parked while the reporter picks a report type, so the form can still be pre-filled. Ignored after a day and swept on the next write. |
 | `reward_tiers` | Reward role | `threshold` fixed reports → `role_id`. |
 
@@ -24,6 +25,8 @@ pending ────┤
 Without a triage channel, reports skip `pending` and start at `open`.
 
 Repositories are tracked by **id**, not name, so renames and transfers (kept in sync through the `repository` webhook) don't break anything.
+
+> Premium (multiple repositories) is checked from the Discord entitlements that arrive with every interaction, so nothing about subscriptions is stored. Without Premium only the primary repository is usable; extra ones are kept but paused.
 
 > `guild_configs` from migration 0001 is no longer used. v1 links were never verified against a GitHub App installation, so servers need to run `/dispatch setup` again. The table can be dropped in a later migration.
 

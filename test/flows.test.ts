@@ -166,8 +166,9 @@ describe('linking a repository', () => {
     const res = await w.request('/github/link', { method: 'POST', body: new URLSearchParams({ token }) });
     expect(res.status).toBe(200);
 
-    const guild = w.sqlite.prepare('SELECT * FROM guilds WHERE guild_id = ?').get(IDS.guild) as any;
-    expect(guild).toMatchObject({ provider: 'github', installation_id: 7, repo_id: 99, repo_full_name: 'acme/app', linked_by: IDS.admin });
+    const repos = w.sqlite.prepare('SELECT * FROM guild_repos WHERE guild_id = ?').all(IDS.guild) as any[];
+    expect(repos).toHaveLength(1);
+    expect(repos[0]).toMatchObject({ provider: 'github', installation_id: 7, repo_id: 99, repo_full_name: 'acme/app', linked_by: IDS.admin });
     expect(discordCalls('POST', /\/users\/@me\/channels/).at(-1)!.body.recipient_id).toBe(IDS.admin);
   });
 
@@ -591,14 +592,14 @@ describe('rewards and GitHub webhooks', () => {
 
   it('follows repository renames', async () => {
     await webhook('repository', { action: 'renamed', repository: { id: 99, full_name: 'acme/app-v2' } });
-    expect(w.sqlite.prepare('SELECT repo_full_name FROM guilds').get()).toEqual({ repo_full_name: 'acme/app-v2' });
+    expect(w.sqlite.prepare('SELECT repo_full_name FROM guild_repos').get()).toEqual({ repo_full_name: 'acme/app-v2' });
     await webhook('repository', { action: 'renamed', repository: { id: 99, full_name: 'acme/app' } });
   });
 
   it('unlinks the server when the app is uninstalled', async () => {
     await webhook('installation', { action: 'deleted', installation: { id: 7 } });
-    const guild = w.sqlite.prepare('SELECT provider, repo_id, triage_channel_id FROM guilds').get();
-    expect(guild).toEqual({ provider: null, repo_id: null, triage_channel_id: IDS.triage }); // settings survive
+    expect(w.sqlite.prepare('SELECT COUNT(*) AS n FROM guild_repos').get()).toEqual({ n: 0 });
+    expect(w.sqlite.prepare('SELECT triage_channel_id FROM guilds').get()).toEqual({ triage_channel_id: IDS.triage }); // settings survive
   });
 });
 
@@ -668,8 +669,9 @@ describe('report types', () => {
   beforeAll(() => {
     // The earlier flows left this server unlinked; start from a plain, directly-filing setup.
     w.sqlite.exec(
-      `UPDATE guilds SET provider = 'github', installation_id = 7, repo_id = 99, repo_full_name = 'acme/app',
-         triage_channel_id = NULL, labels = 'bug', report_types = '', cooldown_seconds = 0`
+      `UPDATE guilds SET triage_channel_id = NULL, labels = 'bug', report_types = '', cooldown_seconds = 0;
+       INSERT INTO guild_repos (guild_id, provider, installation_id, repo_id, repo_full_name)
+       VALUES ('${IDS.guild}', 'github', 7, 99, 'acme/app')`
     );
   });
 
@@ -751,5 +753,489 @@ describe('report types', () => {
 
     await w.interact({ type: 3, ...w.base(IDS.admin, true), data: { custom_id: `triage-approve;${id}`, component_type: 2 } });
     expect(lastIssue().body.labels).toEqual(['bug', 'Crash']);
+  });
+});
+
+describe('multiple repositories (Premium)', () => {
+  const SKU = '900000000000000009';
+  const entitlement = (overrides: Record<string, unknown> = {}) => ({
+    id: '1',
+    sku_id: SKU,
+    application_id: IDS.app,
+    guild_id: IDS.guild,
+    type: 8,
+    deleted: false,
+    starts_at: null,
+    ends_at: null,
+    ...overrides,
+  });
+  const PREMIUM = { entitlements: [entitlement()] };
+
+  const repoRows = () => w.sqlite.prepare('SELECT id, repo_id, repo_full_name FROM guild_repos ORDER BY id').all() as any[];
+  const idOf = (name: string) => repoRows().find((r) => r.repo_full_name === name).id as number;
+  const latestReport = () => w.sqlite.prepare('SELECT * FROM reports ORDER BY id DESC LIMIT 1').get() as any;
+  const lastIssue = (repo: string) => w.http.find('POST', new RegExp(`repos/${repo}/issues$`)).at(-1)!;
+
+  const slash = (name: string, extra: Record<string, unknown> = {}, who: string = IDS.member, admin = false) =>
+    w.interact({ type: 2, ...w.base(who, admin), ...extra, data: { id: 'c', name, type: 1 } });
+  const setup = (extra: Record<string, unknown> = {}) =>
+    w.interact({
+      type: 2,
+      ...w.base(IDS.admin, true),
+      ...extra,
+      data: { id: 'c', name: 'dispatch', type: 1, options: [{ type: 1, name: 'setup' }] },
+    });
+  const pick = (customId: string, values: string[], extra: Record<string, unknown> = {}, who: string = IDS.member, admin = false) =>
+    w.interact({ type: 3, ...w.base(who, admin), ...extra, data: { custom_id: customId, component_type: 3, values } });
+  const submit = (customId: string, title: string, extra: Record<string, unknown> = {}) =>
+    w.interact({ ...w.base(IDS.member), ...extra, ...report({ title, description: 'Something is clearly broken here' }, { custom_id: customId }) });
+
+  /** Links a repository through the real signed-grant → /github/link path. */
+  async function link(repoId: number, name: string, premium: boolean) {
+    const token = await signToken(w.env.STATE_SECRET, { g: IDS.guild, u: IDS.admin, p: premium, i: 7, r: repoId, n: name }, 600);
+    return w.request('/github/link', { method: 'POST', body: new URLSearchParams({ token }) });
+  }
+
+  beforeAll(async () => {
+    w.env.PREMIUM_SKU_ID = SKU;
+    let n = 700;
+    w.http.on('POST', /api\.github\.com\/repos\/acme\/(api|api-v2|web)\/issues$/, (_, m) => {
+      n += 1;
+      return { number: n, html_url: `https://github.com/acme/${m[1]}/issues/${n}` };
+    });
+    w.http.on('GET', /api\.github\.com\/user\/installations\/7\/repositories/, () => ({
+      repositories: [
+        { id: 99, full_name: 'acme/app', private: false, permissions: { push: true } },
+        { id: 101, full_name: 'acme/api', private: true, permissions: { push: true } },
+        { id: 102, full_name: 'acme/web', private: false, permissions: { push: true } },
+      ],
+    }));
+
+    // Start from a clean, directly-filing server.
+    w.sqlite.exec(`DELETE FROM guild_repos; UPDATE guilds SET triage_channel_id = NULL, labels = 'bug', report_types = '', cooldown_seconds = 0`);
+    await link(99, 'acme/app', false);
+  });
+
+  describe('premium detection', () => {
+    it('offers a Premium button on /dispatch setup when the server is not subscribed', async () => {
+      const res = await setup();
+      expect(JSON.stringify(res.json)).toContain(`"style":6,"sku_id":"${SKU}"`);
+      expect(textOf(res.json)).toContain('replaces this one');
+    });
+
+    it('ignores entitlements for another server, another SKU, deleted or expired ones', async () => {
+      const ignored = [
+        entitlement({ guild_id: '999' }),
+        entitlement({ sku_id: '123' }),
+        entitlement({ deleted: true }),
+        entitlement({ ends_at: '2020-01-01T00:00:00Z' }),
+        entitlement({ starts_at: '2999-01-01T00:00:00Z' }),
+      ];
+      for (const e of ignored) {
+        const res = await setup({ entitlements: [e] });
+        expect(JSON.stringify(res.json)).toContain('"style":6');
+      }
+    });
+
+    it('recognises an active subscription and drops the upsell', async () => {
+      const res = await setup(PREMIUM);
+      expect(JSON.stringify(res.json)).not.toContain('"style":6');
+      expect(textOf(res.json)).toContain('Dispatch Pro');
+      expect(textOf(res.json)).toContain('1 of 10 repositories');
+    });
+  });
+
+  describe('linking', () => {
+    it('replaces the repository on a free server', async () => {
+      await link(101, 'acme/api', false);
+      expect(repoRows().map((r) => r.repo_full_name)).toEqual(['acme/api']);
+      await link(99, 'acme/app', false);
+      expect(repoRows().map((r) => r.repo_full_name)).toEqual(['acme/app']);
+    });
+
+    it('marks connected repositories in the picker and explains what linking does', async () => {
+      const state = await signToken(w.env.STATE_SECRET, { g: IDS.guild, u: IDS.admin, p: true }, 600);
+      const page = await (await w.request(`/github/callback?code=abc&state=${encodeURIComponent(state)}`)).text();
+      expect(page).toContain('1 of 10 connected');
+      expect(page).toMatch(/acme\/app[\s\S]*?Connected/);
+      expect(page).toContain('acme/api');
+      // A connected repository gets no grant token, so it can't be submitted.
+      expect(page.match(/name="token" value="[^"]+"/g)).toHaveLength(2);
+
+      const free = await signToken(w.env.STATE_SECRET, { g: IDS.guild, u: IDS.admin }, 600);
+      const freePage = await (await w.request(`/github/callback?code=abc&state=${encodeURIComponent(free)}`)).text();
+      expect(freePage).toContain('replaces the one already connected');
+    });
+
+    it('adds repositories alongside each other on a Premium server', async () => {
+      const res = await link(101, 'acme/api', true);
+      const html = await res.text();
+      expect(html).toContain('was added');
+      expect(html).toContain('Add another repository'); // a way back into the picker
+      await link(102, 'acme/web', true);
+      expect(repoRows().map((r) => r.repo_full_name)).toEqual(['acme/app', 'acme/api', 'acme/web']);
+    });
+
+    it('is idempotent for a repository that is already connected', async () => {
+      await link(101, 'acme/api', true);
+      expect(repoRows()).toHaveLength(3);
+    });
+
+    it('stops at the limit', async () => {
+      for (let i = 0; i < 7; i++) {
+        w.sqlite.exec(
+          `INSERT INTO guild_repos (guild_id, provider, installation_id, repo_id, repo_full_name) VALUES ('${IDS.guild}', 'github', 7, ${1000 + i}, 'acme/filler-${i}')`
+        );
+      }
+      expect(repoRows()).toHaveLength(10);
+
+      const res = await link(555, 'acme/eleventh', true);
+      expect(res.status).toBe(409);
+      expect(repoRows()).toHaveLength(10);
+
+      const panel = await setup(PREMIUM);
+      expect(textOf(panel.json)).toContain('Disconnect one to make room');
+      expect(JSON.stringify(panel.json)).not.toContain('installations/new'); // nothing more to add
+
+      w.sqlite.exec(`DELETE FROM guild_repos WHERE repo_full_name LIKE 'acme/filler-%'`);
+    });
+
+    it('lists every repository on the setup panel and in settings', async () => {
+      const panel = await setup(PREMIUM);
+      for (const name of ['acme/app', 'acme/api', 'acme/web']) expect(textOf(panel.json)).toContain(name);
+      const settings = await w.interact({
+        type: 2,
+        ...w.base(IDS.admin, true),
+        ...PREMIUM,
+        data: { id: 'c', name: 'dispatch', type: 1, options: [{ type: 1, name: 'settings' }] },
+      });
+      expect(textOf(settings.json)).toContain('Repositories** (3)');
+      expect(textOf(settings.json)).not.toContain('Paused');
+    });
+  });
+
+  describe('reporting', () => {
+    it('asks which repository, then opens the form for it', async () => {
+      const picker = await slash('report', PREMIUM);
+      expect(picker.json.type).toBe(4);
+      expect(customIds(picker.json)).toEqual(['report-repo']);
+      for (const name of ['acme/app', 'acme/api', 'acme/web']) expect(JSON.stringify(picker.json)).toContain(`"label":"${name}"`);
+
+      const modal = await pick('report-repo', [String(idOf('acme/api'))], PREMIUM);
+      expect(modal.json.type).toBe(9);
+      expect(modal.json.data.custom_id).toBe(`report;||${idOf('acme/api')}`);
+      expect(modal.json.data.title).toBe('Report a bug · acme/api');
+    });
+
+    it('files the issue in the chosen repository, not the primary one', async () => {
+      const before = w.http.find('POST', /repos\/acme\/app\/issues$/).length;
+      const res = await submit(`report;||${idOf('acme/api')}`, 'API returns 500', PREMIUM);
+      expect(textOf(followupOf(res.token).body)).toContain('acme/api#');
+      expect(lastIssue('acme/api').body.title).toBe('API returns 500');
+      expect(w.http.find('POST', /repos\/acme\/app\/issues$/)).toHaveLength(before);
+      expect(latestReport()).toMatchObject({ repo_id: 101, repo_full_name: 'acme/api', status: 'open' });
+    });
+
+    it('sends reports from a plain form to the primary repository', async () => {
+      await submit('report', 'Old style form', PREMIUM);
+      expect(latestReport()).toMatchObject({ repo_id: 99, status: 'open' });
+    });
+
+    it('rejects a repository that was disconnected while the form was open', async () => {
+      const before = latestReport().id;
+      const res = await submit('report;||9999', 'Stale', PREMIUM);
+      expect(textOf(followupOf(res.token).body)).toContain("isn't available any more");
+      expect(latestReport().id).toBe(before);
+    });
+
+    it('rejects a picker choice that is not one of the server repositories', async () => {
+      const res = await pick('report-repo', ['9999'], PREMIUM);
+      expect(textOf(res.json)).toContain('no longer available');
+    });
+
+    it('chains the repository picker into the type picker', async () => {
+      w.sqlite.exec(`UPDATE guilds SET report_types = 'Crash, UI'`);
+      const api = idOf('acme/api');
+
+      const next = await pick('report-repo', [String(api)], PREMIUM);
+      expect(next.json.type).toBe(7); // the picker message is replaced in place
+      expect(customIds(next.json)).toEqual([`report-type;|${api}`]);
+
+      const modal = await pick(`report-type;|${api}`, ['1'], PREMIUM);
+      expect(modal.json.type).toBe(9);
+      expect(modal.json.data.custom_id).toBe(`report;1||${api}`);
+      expect(modal.json.data.title).toBe('Report a bug · acme/api · UI');
+
+      await submit(`report;1||${api}`, 'Typed and routed', PREMIUM);
+      expect(lastIssue('acme/api').body.labels).toEqual(['bug', 'UI']);
+      expect(latestReport()).toMatchObject({ repo_id: 101, report_type: 'UI' });
+    });
+
+    it('keeps a reported message pre-filled through both pickers, for its owner only', async () => {
+      const target = { id: '910', channel_id: IDS.channel, content: 'checkout hangs on the last step' };
+      const first = await w.interact({
+        type: 2,
+        ...w.base(IDS.member),
+        ...PREMIUM,
+        data: { id: 'c', name: 'Report bug', type: 3, target_id: '910', resolved: { messages: { '910': target } } },
+      });
+      const [repoSelect] = customIds(first.json);
+      expect(repoSelect).toMatch(/^report-repo;\d+$/);
+
+      const web = idOf('acme/web');
+      const second = await pick(repoSelect!, [String(web)], PREMIUM);
+      const [typeSelect] = customIds(second.json);
+      expect(typeSelect).toMatch(new RegExp(`^report-type;\\d+\\|${web}$`));
+
+      const modal = await pick(typeSelect!, ['0'], PREMIUM);
+      expect(modal.json.data.custom_id).toBe(`report;0|${IDS.channel}:910|${web}`);
+      expect(JSON.stringify(modal.json.data)).toContain('checkout hangs on the last step');
+
+      const intruder = await pick(typeSelect!, ['0'], PREMIUM, '999');
+      expect(JSON.stringify(intruder.json.data)).not.toContain('checkout hangs');
+
+      w.sqlite.exec(`UPDATE guilds SET report_types = ''`);
+    });
+
+    it('pre-fills a reported message when only the repository is asked', async () => {
+      const target = { id: '911', channel_id: IDS.channel, content: 'the export button does nothing' };
+      const first = await w.interact({
+        type: 2,
+        ...w.base(IDS.member),
+        ...PREMIUM,
+        data: { id: 'c', name: 'Report bug', type: 3, target_id: '911', resolved: { messages: { '911': target } } },
+      });
+      const [repoSelect] = customIds(first.json);
+      const modal = await pick(repoSelect!, [String(idOf('acme/web'))], PREMIUM);
+      expect(modal.json.type).toBe(9);
+      expect(modal.json.data.custom_id).toBe(`report;|${IDS.channel}:911|${idOf('acme/web')}`);
+      expect(JSON.stringify(modal.json.data)).toContain('the export button does nothing');
+    });
+
+    it('does not ask when the server has a single repository, even with Premium', async () => {
+      const spare = repoRows().filter((r) => r.repo_full_name !== 'acme/app').map((r) => r.id);
+      w.sqlite.exec(`DELETE FROM guild_repos WHERE id IN (${spare.join(',')})`);
+      const res = await slash('report', PREMIUM);
+      expect(res.json.type).toBe(9);
+      expect(res.json.data.custom_id).toBe('report');
+      await link(101, 'acme/api', true);
+      await link(102, 'acme/web', true);
+    });
+  });
+
+  describe('without Premium', () => {
+    it('goes straight to the primary repository and never shows a picker', async () => {
+      const res = await slash('report');
+      expect(res.json.type).toBe(9);
+      expect(res.json.data.custom_id).toBe('report');
+
+      await submit('report', 'Free server report');
+      expect(latestReport()).toMatchObject({ repo_id: 99, title: 'Free server report' });
+    });
+
+    it('refuses a form targeting a paused repository', async () => {
+      const before = latestReport().id;
+      const res = await submit(`report;||${idOf('acme/api')}`, 'Sneaky');
+      expect(textOf(followupOf(res.token).body)).toContain("isn't available any more");
+      expect(latestReport().id).toBe(before);
+    });
+
+    it('shows extra repositories as paused in setup', async () => {
+      const panel = await setup();
+      expect(textOf(panel.json)).toContain('Paused');
+      expect(textOf(panel.json)).toContain('replaces all 3');
+      expect(JSON.stringify(panel.json)).toContain('"style":6');
+    });
+
+    it('treats an expired subscription as free', async () => {
+      const res = await slash('report', { entitlements: [entitlement({ ends_at: '2020-01-01T00:00:00Z' })] });
+      expect(res.json.type).toBe(9);
+    });
+
+    it('keeps the paused repositories, and restores them when Premium returns', async () => {
+      expect(repoRows()).toHaveLength(3);
+      const res = await slash('report', PREMIUM);
+      expect(customIds(res.json)).toEqual(['report-repo']);
+    });
+
+    it('replaces all of them when a free server connects a repository', async () => {
+      await link(102, 'acme/web', false);
+      expect(repoRows().map((r) => r.repo_full_name)).toEqual(['acme/web']);
+      await link(99, 'acme/app', true);
+      await link(101, 'acme/api', true);
+      expect(repoRows().map((r) => r.repo_full_name)).toEqual(['acme/web', 'acme/app', 'acme/api']);
+    });
+  });
+
+  describe('triage', () => {
+    beforeAll(async () => {
+      w.sqlite.exec(`DELETE FROM guild_repos; UPDATE guilds SET triage_channel_id = '${IDS.triage}'`);
+      await link(99, 'acme/app', true);
+      await link(101, 'acme/api', true);
+    });
+
+    const approve = (id: number, extra: Record<string, unknown> = {}) =>
+      w.interact({ type: 3, ...w.base(IDS.admin, true), ...extra, data: { custom_id: `triage-approve;${id}`, component_type: 2 } });
+
+    it('queues the report with its target repository shown on the card', async () => {
+      await submit(`report;||${idOf('acme/api')}`, 'Queued for the API', PREMIUM);
+      const card = discordCalls('POST', new RegExp(`/channels/${IDS.triage}/messages$`)).at(-1)!;
+      expect(textOf(card.body)).toContain('for acme/api');
+      expect(latestReport()).toMatchObject({ status: 'pending', repo_id: 101, issue_number: null });
+    });
+
+    it('files the issue in the repository the reporter chose when staff approve', async () => {
+      const id = latestReport().id;
+      const before = w.http.find('POST', /repos\/acme\/app\/issues$/).length;
+      await approve(id, PREMIUM);
+      expect(lastIssue('acme/api').body.title).toBe('Queued for the API');
+      expect(w.http.find('POST', /repos\/acme\/app\/issues$/)).toHaveLength(before);
+      expect(reportRow(id)).toMatchObject({ status: 'open', repo_full_name: 'acme/api' });
+    });
+
+    it('will not approve into a repository paused by an ended subscription', async () => {
+      await submit(`report;||${idOf('acme/api')}`, 'Queued then lapsed', PREMIUM);
+      const id = latestReport().id;
+      const res = await approve(id); // no entitlements now
+      expect(textOf(res.json)).toContain('paused');
+      expect(reportRow(id).status).toBe('pending');
+      // ...and it goes through once Premium is back.
+      await approve(id, PREMIUM);
+      expect(reportRow(id).status).toBe('open');
+    });
+
+    it('reports a repository that was disconnected after the report was queued', async () => {
+      await submit(`report;||${idOf('acme/api')}`, 'Queued then disconnected', PREMIUM);
+      const id = latestReport().id;
+      w.sqlite.exec(`DELETE FROM guild_repos WHERE repo_id = 101`);
+      const res = await approve(id, PREMIUM);
+      expect(textOf(res.json)).toContain('disconnected');
+      expect(reportRow(id).status).toBe('pending');
+    });
+
+    it('sends reports queued before this feature (no repository) to the primary one', async () => {
+      w.sqlite.exec(
+        `INSERT INTO reports (guild_id, reporter_id, reporter_name, title, description, status)
+         VALUES ('${IDS.guild}', '${IDS.member}', 'reporter', 'Queued long ago', 'It was queued before repositories', 'pending')`
+      );
+      const id = latestReport().id;
+      await approve(id);
+      expect(reportRow(id)).toMatchObject({ status: 'open', repo_full_name: 'acme/app' });
+      await link(101, 'acme/api', true);
+    });
+  });
+
+  describe('disconnecting', () => {
+    const disconnect = () =>
+      w.interact({
+        type: 2,
+        ...w.base(IDS.admin, true),
+        data: { id: 'c', name: 'dispatch', type: 1, options: [{ type: 1, name: 'disconnect' }] },
+      });
+    const press = (customId: string, who: string = IDS.admin, admin = true) =>
+      w.interact({ type: 3, ...w.base(who, admin), data: { custom_id: customId, component_type: 2 } });
+
+    it('asks which repository to disconnect', async () => {
+      const res = await disconnect();
+      expect(customIds(res.json)).toEqual(['disconnect-pick']);
+    });
+
+    it('confirms, then removes only the chosen one', async () => {
+      const api = idOf('acme/api');
+      const confirm = await pick('disconnect-pick', [String(api)], {}, IDS.admin, true);
+      expect(textOf(confirm.json)).toContain('Disconnect acme/api?');
+      expect(textOf(confirm.json)).toContain('stays connected');
+      expect(customIds(confirm.json)).toContain(`disconnect-confirm;${api}`);
+
+      const done = await press(`disconnect-confirm;${api}`);
+      expect(textOf(done.json)).toContain('1 repository is still connected');
+      expect(repoRows().map((r) => r.repo_full_name)).toEqual(['acme/app']);
+
+      const again = await press(`disconnect-confirm;${api}`);
+      expect(textOf(again.json)).toContain('already disconnected');
+    });
+
+    it('skips the picker when only one is left, and rejects non-admins', async () => {
+      const res = await disconnect();
+      expect(textOf(res.json)).toContain('Disconnect acme/app?');
+
+      const denied = await press(`disconnect-confirm;${idOf('acme/app')}`, IDS.member, false);
+      expect(textOf(denied.json)).toContain('Manage Server');
+      expect(repoRows()).toHaveLength(1);
+    });
+
+    it('still honours a confirm button sent before repositories had ids', async () => {
+      const done = await press('disconnect-confirm');
+      expect(textOf(done.json)).toContain('disconnected');
+      expect(repoRows()).toHaveLength(0);
+      await link(99, 'acme/app', true);
+      await link(101, 'acme/api', true);
+    });
+  });
+
+  describe('GitHub webhooks', () => {
+    it('removes only the repositories taken off an installation', async () => {
+      await webhook('installation_repositories', {
+        action: 'removed',
+        installation: { id: 7 },
+        repositories_removed: [{ id: 101 }],
+      });
+      expect(repoRows().map((r) => r.repo_full_name)).toEqual(['acme/app']);
+      await link(101, 'acme/api', true);
+    });
+
+    it('renames the right repository everywhere', async () => {
+      await webhook('repository', { action: 'renamed', repository: { id: 101, full_name: 'acme/api-v2' } });
+      expect(repoRows().map((r) => r.repo_full_name)).toEqual(['acme/app', 'acme/api-v2']);
+      expect(w.sqlite.prepare('SELECT DISTINCT repo_full_name FROM reports WHERE repo_id = 101').all()).toEqual([
+        { repo_full_name: 'acme/api-v2' },
+      ]);
+    });
+
+    it('marks a report fixed when its issue closes in a secondary repository', async () => {
+      w.sqlite.exec(`UPDATE guilds SET triage_channel_id = NULL`);
+      await submit(`report;||${idOf('acme/api-v2')}`, 'Fix me in api', PREMIUM);
+      const row = latestReport();
+      expect(row).toMatchObject({ repo_id: 101, status: 'open' });
+      await webhook('issues', {
+        action: 'closed',
+        issue: { number: row.issue_number, state_reason: 'completed' },
+        repository: { id: 101, full_name: 'acme/api-v2' },
+      });
+      expect(reportRow(row.id).status).toBe('fixed');
+    });
+
+    it('removes every repository when the app is uninstalled', async () => {
+      await webhook('installation', { action: 'deleted', installation: { id: 7 } });
+      expect(repoRows()).toHaveLength(0);
+    });
+  });
+});
+
+describe('migration 0004', () => {
+  it('copies existing single-repository links into guild_repos', async () => {
+    const { DatabaseSync } = await import('node:sqlite');
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const dir = join(import.meta.dirname, '../migrations');
+    const files = readdirSync(dir).sort();
+    const migration = readFileSync(join(dir, files.find((f) => f.startsWith('0004'))!), 'utf8');
+
+    const db = new DatabaseSync(':memory:');
+    for (const file of files.filter((f) => !f.startsWith('0004'))) db.exec(readFileSync(join(dir, file), 'utf8'));
+    db.exec(`
+      INSERT INTO guilds (guild_id, provider, installation_id, repo_id, repo_full_name, linked_by, triage_channel_id)
+      VALUES ('g1', 'github', 7, 99, 'acme/app', 'u1', 'c1');
+      INSERT INTO guilds (guild_id, triage_channel_id) VALUES ('g2', 'c2');
+    `);
+    db.exec(migration);
+
+    const rows = db.prepare('SELECT guild_id, provider, installation_id, repo_id, repo_full_name, linked_by FROM guild_repos').all();
+    expect(rows.map((r) => ({ ...r }))).toEqual([
+      { guild_id: 'g1', provider: 'github', installation_id: 7, repo_id: 99, repo_full_name: 'acme/app', linked_by: 'u1' },
+    ]);
+    // Re-running is harmless.
+    db.exec(migration);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM guild_repos').get()).toEqual({ n: 1 });
   });
 });
