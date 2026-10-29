@@ -375,41 +375,15 @@ h2 em {
   margin-top: 12px;
 }
 
-/* Carousel ---------------------------------------------------------------- */
+/* Hero demo ------------------------------------------------------------- */
 
-.carousel {
+.demo {
   min-width: 0;
-  outline: none;
   animation: rise 0.8s var(--ease) 0.3s both;
 }
 
-.carousel .discord {
-  animation: none;
-}
-
-/* All slides share one grid cell so the box is as tall as the tallest one. */
-.slides {
-  display: grid;
-}
-
-.slide {
-  grid-area: 1 / 1;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateX(14px);
-  transition:
-    opacity 0.35s var(--ease),
-    transform 0.35s var(--ease),
-    visibility 0s 0.35s;
-}
-
-.slide.is-active {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-  transition:
-    opacity 0.35s var(--ease),
-    transform 0.35s var(--ease);
+.demo .assure {
+  margin-top: 28px;
 }
 
 .d-mention {
@@ -428,67 +402,6 @@ h2 em {
 
 .d-btn.off {
   opacity: 0.45;
-}
-
-.car-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 36px;
-  margin-right: 12px;
-}
-
-.car-btn {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
-  font: 400 18px var(--font-mono);
-  cursor: pointer;
-  transition:
-    border-color 0.15s,
-    color 0.15s,
-    background 0.15s;
-}
-
-.car-btn:hover,
-.car-btn:focus-visible {
-  border-color: var(--brand);
-  color: var(--brand);
-  background: var(--surface);
-  outline: none;
-}
-
-.car-dots {
-  display: flex;
-  gap: 8px;
-}
-
-.car-dot {
-  width: 28px;
-  height: 4px;
-  padding: 0;
-  border: 0;
-  background: var(--border);
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.car-dot:hover {
-  background: var(--muted);
-}
-
-.car-dot.is-active {
-  background: var(--brand);
-}
-
-.car-dot:focus-visible,
-.carousel:focus-visible .discord {
-  outline: 1px solid var(--brand);
-  outline-offset: 3px;
 }
 
 /* Ticker ------------------------------------------------------------------ */
@@ -531,11 +444,8 @@ h2 em {
 @media (prefers-reduced-motion: reduce) {
   .ticker-track,
   .hero-copy > *,
-  .carousel {
+  .demo {
     animation: none;
-  }
-  .slide {
-    transition: none;
   }
   html {
     scroll-behavior: auto;
@@ -813,6 +723,189 @@ h2 {
 
 .assure code {
   font-size: inherit;
+}
+
+/* Docs page --------------------------------------------------------------- */
+
+.page-head {
+  padding-top: 72px;
+  padding-bottom: 64px;
+  position: relative;
+}
+
+.page-head h1 {
+  font-size: clamp(40px, 6vw, 68px);
+  margin: 0 0 16px;
+}
+
+.page-head .lede a,
+.docs-body a {
+  color: var(--brand);
+}
+
+.docs {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 64px;
+  padding-top: 64px;
+  padding-bottom: 96px;
+}
+
+.docs-nav {
+  position: sticky;
+  top: 88px;
+  align-self: start;
+  display: grid;
+  gap: 2px;
+  border-left: 1px solid var(--border);
+}
+
+.docs-nav a {
+  padding: 6px 16px;
+  margin-left: -1px;
+  border-left: 1px solid transparent;
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.docs-nav a:hover,
+.docs-nav a:focus-visible,
+.docs-nav a.is-active {
+  color: var(--brand);
+  border-left-color: var(--brand);
+  outline: none;
+}
+
+.docs-nav a.is-active {
+  background: var(--navy);
+}
+
+.docs-body {
+  max-width: 760px;
+}
+
+.docs-body section {
+  padding: 0 0 56px;
+  margin-bottom: 56px;
+  scroll-margin-top: 88px;
+}
+
+.docs-body section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.docs-body h2 {
+  font-size: 34px;
+  margin: 0 0 20px;
+}
+
+.docs-body p,
+.docs-body li {
+  color: var(--muted);
+  font-weight: 300;
+  line-height: 1.65;
+}
+
+.docs-body p {
+  margin: 0 0 16px;
+}
+
+.docs-body b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.docs-body ol,
+.docs-body ul {
+  margin: 0 0 16px;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 0 0 16px;
+  border: 1px solid var(--border);
+}
+
+.docs-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.docs-body th,
+.docs-body td {
+  padding: 12px 16px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 300;
+}
+
+.docs-body th {
+  font: 500 11px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.docs-body td:first-child {
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.docs-body tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .docs {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .docs-nav {
+    position: static;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+    border-left: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .docs-nav a {
+    border-left: 0;
+    margin-left: 0;
+    padding: 10px 14px;
+  }
+  .docs-body td:first-child {
+    white-space: normal;
+  }
+}
+
+/* Copy on the left, a Discord mock on the right. */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+.split h2 {
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
 }
 
 /* Short supporting bullets inside a cell. */

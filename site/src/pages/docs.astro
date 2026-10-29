@@ -1,0 +1,239 @@
+---
+import Base from '../layouts/Base.astro';
+
+const sections = [
+  { id: 'start', title: 'Getting started' },
+  { id: 'reporting', title: 'Reporting a bug' },
+  { id: 'triage', title: 'Triage' },
+  { id: 'updates', title: 'Updates and status' },
+  { id: 'rewards', title: 'Reward roles' },
+  { id: 'settings', title: 'Settings' },
+  { id: 'commands', title: 'Commands' },
+  { id: 'permissions', title: 'Permissions and data' },
+  { id: 'limits', title: 'Limits' },
+  { id: 'troubleshooting', title: 'Troubleshooting' },
+];
+
+const commands = [
+  ['/report', 'Everyone', 'Open the bug report form.'],
+  ['Apps → Report bug', 'Everyone', 'Right-click a message to report it, with its text pre-filled and a link back to it.'],
+  ['/issues', 'Everyone', 'Your open reports across every server using Dispatch. Works in DMs too.'],
+  ['/stats [member]', 'Everyone', 'Report counts and reward progress.'],
+  ['/leaderboard', 'Everyone', 'Top reporters by fixed bugs.'],
+  ['/dispatch setup', 'Manage Server', 'Connect or change the GitHub repository.'],
+  ['/dispatch settings', 'Manage Server', 'Triage queue, updates channel, staff role, labels, report types, cooldown, reporter DMs.'],
+  ['/dispatch disconnect', 'Manage Server', 'Unlink the repository.'],
+  ['/dispatch rewards add / remove / list', 'Manage Server', 'Configure reward roles.'],
+];
+
+const settings = [
+  ['Triage channel', 'Off', 'Where new reports wait for approval. Leave empty to file issues immediately.'],
+  ['Updates channel', 'Off', 'Where new issues, fixes and reward roles are announced.'],
+  ['Staff role', 'None', 'Can approve or reject reports. Members with Manage Server always can.'],
+  ['Issue labels', 'bug', 'Added to every issue, comma separated. Missing labels are created automatically.'],
+  ['Report types', 'None', 'Up to 10, such as Crash, UI, Performance. Members pick one before the form opens, and it is added to the issue as a label.'],
+  ['Cooldown', '60 seconds', 'Minimum time between reports from the same member. 0 to 3600.'],
+  ['Reporter DMs', 'On', 'Whether reporters hear about approvals, fixes and maintainer comments.'],
+];
+
+const problems = [
+  ['Triage cards have no discussion thread', 'Dispatch needs Create Public Threads in the triage channel. Grant it there. Existing cards are not back-filled.'],
+  ['“I can’t post in #channel” in settings', 'Dispatch cannot see that channel, usually because of a private category. Give it View Channel and Send Messages there.'],
+  ['Reporters never get DMs', 'The member has DMs from server members turned off. Dispatch skips the DM, and updates channel posts still work.'],
+  ['A reward role is not granted', 'Dispatch’s own role must sit above every reward role in Server Settings → Roles.'],
+  ['“Dispatch no longer has access to the repository”', 'The GitHub App was removed from the repository or its access changed. An admin should run /dispatch setup again.'],
+  ['Status does not change when an issue is closed', 'The GitHub App sends a webhook when an issue closes. If you host Dispatch yourself, check the app’s Recent Deliveries for a 401, which means the webhook secret does not match.'],
+];
+---
+
+<Base
+  title="Docs — Dispatch"
+  description="How to set up Dispatch, report bugs, run a triage queue, configure rewards, and fix common problems."
+>
+  <main>
+    <div class="hero-bg">
+      <div class="wrap page-head">
+        <span class="index">Docs</span>
+        <h1>Using <em>Dispatch.</em></h1>
+        <p class="lede">Setup, reporting, triage, rewards and settings. For what Dispatch can access, see <a href="/#trust">the trust summary</a>.</p>
+      </div>
+    </div>
+
+    <div class="wrap docs">
+      <nav class="docs-nav" aria-label="Documentation sections">
+        {sections.map((s) => <a href={`#${s.id}`}>{s.title}</a>)}
+      </nav>
+
+      <article class="docs-body">
+        <section id="start">
+          <h2>Getting started</h2>
+          <p>You need the <b>Manage Server</b> permission in Discord, and write access to the GitHub repository you want reports to go to.</p>
+          <ol>
+            <li>Choose <b>Add to Discord</b> on this site and add the bot to your server.</li>
+            <li>Run <code>/dispatch setup</code>. Dispatch gives you a link to install its GitHub App.</li>
+            <li>Install the app on the account that owns the repository. You can limit it to a single repository.</li>
+            <li>Sign in with GitHub when asked, then pick the repository. Dispatch checks that you can push to it before linking.</li>
+          </ol>
+          <p>Members can now use <code>/report</code>. Everything else, such as a triage channel, labels and rewards, is optional and lives in <code>/dispatch settings</code>.</p>
+        </section>
+
+        <section id="reporting">
+          <h2>Reporting a bug</h2>
+          <p>Members run <code>/report</code>, or right-click any message and choose <b>Apps → Report bug</b>. The second route pre-fills the form with the message text and links back to the message.</p>
+          <p>The form asks for a title, what happened, steps to reproduce, the version or environment, and up to three screenshots or logs. Only the title and description are required.</p>
+          <p>If your server has <b>report types</b>, members choose one first. It becomes a label on the GitHub issue, alongside your base labels.</p>
+          <p>The reporter gets a receipt straight away. If there is a cooldown, they are told how long to wait.</p>
+        </section>
+
+        <section id="triage">
+          <h2>Triage</h2>
+          <p>Pick a triage channel in <code>/dispatch settings</code> and new reports land there instead of going straight to GitHub. Each report is a card with <b>Approve</b> and <b>Reject</b> buttons, and gets its own thread for discussion.</p>
+          <ul>
+            <li><b>Approve</b> files the GitHub issue and tells the reporter.</li>
+            <li><b>Reject</b> asks for an optional reason and sends it to the reporter.</li>
+            <li>Staff are members with the staff role, or anyone with Manage Server.</li>
+            <li>If the triage channel is deleted or Dispatch loses access, reports are filed directly rather than lost.</li>
+          </ul>
+        </section>
+
+        <section id="updates">
+          <h2>Updates and status</h2>
+          <p>Reporters get a DM when their report is approved, rejected, answered by a maintainer, closed, reopened or fixed. An optional updates channel announces new issues and fixes.</p>
+          <p>A report counts as <b>fixed</b> when its issue is closed as <i>completed</i>. Issues closed as <i>not planned</i> or <i>duplicate</i> are closed without credit. Reopening an issue takes the credit back.</p>
+        </section>
+
+        <section id="rewards">
+          <h2>Reward roles</h2>
+          <p><code>/dispatch rewards add @Bug Hunter 5</code> grants the role after 5 fixed reports. Add as many tiers as you like, and see them with <code>/dispatch rewards list</code>.</p>
+          <p>Dispatch’s own role must sit above every reward role in <i>Server Settings → Roles</i>, or Discord refuses the assignment. When you add a tier, up to 20 members who already qualify get it immediately. Everyone else gets it the next time one of their reports is fixed.</p>
+        </section>
+
+        <section id="settings">
+          <h2>Settings</h2>
+          <p>Admins open <code>/dispatch settings</code>. Channels and the staff role are selectors, and labels, report types and cooldown are in the <b>Edit</b> form.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
+              <tbody>
+                {settings.map(([name, def, desc]) => (
+                  <tr><td>{name}</td><td>{def}</td><td>{desc}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="commands">
+          <h2>Commands</h2>
+          <p><code>/dispatch</code> is hidden from members without Manage Server by default. Admins can change this under <i>Server Settings → Integrations</i>.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Command</th><th>Who</th><th>What it does</th></tr></thead>
+              <tbody>
+                {commands.map(([name, who, desc]) => (
+                  <tr><td><code>{name}</code></td><td>{who}</td><td>{desc}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="permissions">
+          <h2>Permissions and data</h2>
+          <ul>
+            <li><b>GitHub App:</b> Issues (read and write) and Metadata (read-only), with webhooks for issue, comment and repository events. It uses a short-lived token scoped to the one linked repository.</li>
+            <li><b>Discord:</b> View Channel, Send Messages, Embed Links, Create Public Threads and Manage Roles. No message content access.</li>
+            <li><b>Stored:</b> report text, the reporter’s Discord ID and username, and server settings, in Cloudflare D1. Attachments are kept in Cloudflare R2 and are public to anyone with the link. The GitHub issue includes the reporter’s Discord username and, for message reports, a link to the message.</li>
+            <li><b>Disconnecting:</b> <code>/dispatch disconnect</code>, or uninstalling the GitHub App, removes the repository link. Existing reports, settings and attachments stay stored, and nothing is deleted automatically yet.</li>
+          </ul>
+        </section>
+
+        <section id="limits">
+          <h2>Limits</h2>
+          <ul>
+            <li>Up to 3 attachments per report, 10 MB each.</li>
+            <li>Allowed types: images, mp4, webm and mov videos, and txt, log and json files. Anything else is skipped and the reporter is told.</li>
+            <li>Up to 10 report types per server.</li>
+            <li>Cooldown between reports from one member: 0 to 3600 seconds.</li>
+          </ul>
+        </section>
+
+        <section id="troubleshooting">
+          <h2>Troubleshooting</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Symptom</th><th>Fix</th></tr></thead>
+              <tbody>
+                {problems.map(([symptom, fix]) => (
+                  <tr><td>{symptom}</td><td>{fix}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p>Still stuck? <a href="https://github.com/dispatch-hq/dispatch/issues" target="_blank" rel="noopener noreferrer">Open an issue</a> on GitHub.</p>
+        </section>
+      </article>
+    </div>
+  </main>
+</Base>
+
+<script>
+  // Highlight the contents entry for the section being read.
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('.docs-nav a')];
+  const sections = links
+    .map((link) => document.getElementById(link.hash.slice(1)))
+    .filter((el): el is HTMLElement => !!el);
+
+  const mark = (id: string) =>
+    links.forEach((link) => {
+      const active = link.hash === `#${id}`;
+      link.classList.toggle('is-active', active);
+      if (active) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+
+  // A section becomes current exactly where clicking its link would put it: just
+  // below the sticky header, which is the section's own scroll-margin-top.
+  const line = () => parseFloat(getComputedStyle(sections[0]).scrollMarginTop) + 2;
+
+  // After a click, the clicked link stays current until the reader scrolls by hand. A short
+  // final section can't always reach the line, and the bottom-of-page rule would pick another.
+  let locked = false;
+  const unlock = () => (locked = false);
+  ['wheel', 'touchmove', 'keydown'].forEach((type) => window.addEventListener(type, unlock, { passive: true }));
+  links.forEach((link) =>
+    link.addEventListener('click', () => {
+      locked = true;
+      mark(link.hash.slice(1));
+    })
+  );
+
+  const update = () => {
+    if (locked) return;
+    let current = sections[0];
+    for (const section of sections) {
+      if (section.getBoundingClientRect().top <= line()) current = section;
+    }
+    // Short final sections never reach the line, so favour the last one at the bottom of the page.
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
+      current = sections[sections.length - 1];
+    }
+    if (current) mark(current.id);
+  };
+
+  let queued = false;
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        update();
+      });
+    },
+    { passive: true }
+  );
+  window.addEventListener('resize', update);
+  update();
+</script>
