@@ -2268,3 +2268,33 @@ footer {
   font-size: 22px;
   margin: 32px 0 12px;
 }
+
+/* 404 --------------------------------------------------------------------- */
+
+.not-found {
+  min-height: calc(100vh - 64px - 1px);
+  min-height: calc(100svh - 65px);
+}
+
+.nf-mock {
+  max-width: 440px;
+  justify-self: end;
+  width: 100%;
+  animation: rise 0.8s var(--ease) 0.3s both;
+}
+
+@media (max-width: 900px) {
+  .not-found {
+    min-height: 0;
+  }
+  .nf-mock {
+    justify-self: stretch;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-mock {
+    animation: none;
+  }
+}
