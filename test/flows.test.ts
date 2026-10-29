@@ -910,7 +910,7 @@ describe('multiple repositories (Premium)', () => {
         data: { id: 'c', name: 'dispatch', type: 1, options: [{ type: 1, name: 'settings' }] },
       });
       expect(textOf(settings.json)).toContain('Repositories** (3)');
-      expect(textOf(settings.json)).not.toContain('Paused');
+      expect(textOf(settings.json)).not.toContain('paused, needs');
     });
   });
 
@@ -1042,7 +1042,7 @@ describe('multiple repositories (Premium)', () => {
 
     it('shows extra repositories as paused in setup', async () => {
       const panel = await setup();
-      expect(textOf(panel.json)).toContain('Paused');
+      expect(textOf(panel.json)).toContain('paused, needs');
       expect(textOf(panel.json)).toContain('replaces all 3');
       expect(JSON.stringify(panel.json)).toContain('"style":6');
     });
@@ -1237,5 +1237,106 @@ describe('migration 0004', () => {
     // Re-running is harmless.
     db.exec(migration);
     expect(db.prepare('SELECT COUNT(*) AS n FROM guild_repos').get()).toEqual({ n: 1 });
+  });
+});
+
+describe('Discord message limits with many repositories', () => {
+  const SKU = '900000000000000009';
+  const PREMIUM = {
+    entitlements: [
+      { id: '1', sku_id: SKU, application_id: IDS.app, guild_id: IDS.guild, type: 8, deleted: false, starts_at: null, ends_at: null },
+    ],
+  };
+
+  /** Every component in a Components V2 payload, nested ones included: Discord allows 40 per message. */
+  function countComponents(payload: any): number {
+    let n = 0;
+    const walk = (node: any) => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!node || typeof node !== 'object') return;
+      if (typeof node.type === 'number' && !('value' in node && 'label' in node)) n += 1;
+      for (const value of Object.values(node)) walk(value);
+    };
+    walk(payload.data.components);
+    return n;
+  }
+
+  const textLength = (payload: any) => textOf(payload).length;
+  const dispatch = (sub: string, extra: Record<string, unknown> = {}) =>
+    w.interact({
+      type: 2,
+      ...w.base(IDS.admin, true),
+      ...extra,
+      data: { id: 'c', name: 'dispatch', type: 1, options: [{ type: 1, name: sub }] },
+    });
+
+  beforeAll(() => {
+    w.sqlite.exec(`DELETE FROM guild_repos`);
+    // Long names, underscores and hyphens: the worst case for the panels' text and markdown.
+    for (let i = 0; i < 10; i++) {
+      w.sqlite.exec(
+        `INSERT INTO guild_repos (guild_id, provider, installation_id, repo_id, repo_full_name)
+         VALUES ('${IDS.guild}', 'github', 7, ${2000 + i}, 'some-organisation/a_rather_long_repository_name_${i}')`
+      );
+    }
+  });
+
+  for (const [label, extra] of [['Premium', PREMIUM], ['lapsed', {}]] as const) {
+    it(`keeps /dispatch setup within Discord's limits with 10 repositories (${label})`, async () => {
+      const res = await dispatch('setup', extra);
+      expect(res.json.type).toBe(4);
+      expect(countComponents(res.json)).toBeLessThanOrEqual(40);
+      expect(textLength(res.json)).toBeLessThanOrEqual(4000);
+    });
+
+    it(`keeps /dispatch settings within Discord's limits with 10 repositories (${label})`, async () => {
+      const res = await dispatch('settings', extra);
+      expect(res.json.type).toBe(4);
+      expect(countComponents(res.json)).toBeLessThanOrEqual(40);
+      expect(textLength(res.json)).toBeLessThanOrEqual(4000);
+    });
+  }
+
+  it('keeps the repository pickers within Discord limits', async () => {
+    const picker = await w.interact({ type: 2, ...w.base(IDS.member), ...PREMIUM, data: { id: 'c', name: 'report', type: 1 } });
+    const options = JSON.stringify(picker.json).match(/"label":/g)!.length;
+    expect(options).toBe(10); // a select menu holds up to 25
+    expect(countComponents(picker.json)).toBeLessThanOrEqual(40);
+
+    const disconnect = await dispatch('disconnect');
+    expect(JSON.stringify(disconnect.json).match(/"label":/g)).toHaveLength(10);
+  });
+
+  it('escapes markdown in repository names', async () => {
+    const res = await dispatch('setup', PREMIUM);
+    expect(textOf(res.json)).toContain('a\\_rather\\_long\\_repository\\_name\\_0');
+  });
+});
+
+describe('repository cap under concurrency', () => {
+  it('never exceeds 10 repositories even when links race', async () => {
+    const { linkRepository } = await import('../src/db');
+    w.sqlite.exec(`DELETE FROM guild_repos`);
+    for (let i = 0; i < 8; i++) {
+      w.sqlite.exec(
+        `INSERT INTO guild_repos (guild_id, provider, installation_id, repo_id, repo_full_name)
+         VALUES ('${IDS.guild}', 'github', 7, ${3000 + i}, 'acme/seed-${i}')`
+      );
+    }
+
+    // All four read "8 connected" before any of them writes.
+    const outcomes = await Promise.all(
+      [0, 1, 2, 3].map((i) =>
+        linkRepository(
+          w.env.DB,
+          { guildId: IDS.guild, provider: 'github', installationId: 7, repoId: 4000 + i, fullName: `acme/racer-${i}`, linkedBy: IDS.admin },
+          true
+        )
+      )
+    );
+
+    expect(w.sqlite.prepare('SELECT COUNT(*) AS n FROM guild_repos').get()).toEqual({ n: 10 });
+    expect(outcomes.filter((o) => o === 'added')).toHaveLength(2);
+    expect(outcomes.filter((o) => o === 'limit')).toHaveLength(2);
   });
 });

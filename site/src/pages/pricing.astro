@@ -1,0 +1,198 @@
+---
+import Base from '../layouts/Base.astro';
+
+// One source of truth for the numbers on this page. The bot enforces the same cap (MAX_REPOS_PER_GUILD).
+const price = '$1.99';
+const maxRepos = 10;
+
+const free = [
+  'Connect one GitHub repository',
+  '/report and Apps → Report bug, with screenshots and logs',
+  'Triage queue with Approve and Reject, and a thread per report',
+  'Report types, labels, cooldown and reporter DMs',
+  'Reward roles for fixed reports, /stats and /leaderboard',
+  'No limit on members or reports',
+];
+
+const pro = [
+  `Connect up to ${maxRepos} GitHub repositories to one server`,
+  'Members choose which repository a bug is for',
+  'Every triage card shows its repository, and Approve files the issue there',
+  'Everything in Free',
+];
+
+// [feature, Free, Pro]
+const compare = [
+  ['Connected repositories', '1', `Up to ${maxRepos}`],
+  ['Members pick the repository when reporting', '—', 'Yes'],
+  ['/report, Apps → Report bug, attachments', 'Yes', 'Yes'],
+  ['Triage queue with a thread per report', 'Yes', 'Yes'],
+  ['Report types, labels and cooldown', 'Yes', 'Yes'],
+  ['Reporter DMs and an updates channel', 'Yes', 'Yes'],
+  ['Reward roles, /stats and /leaderboard', 'Yes', 'Yes'],
+];
+
+const faqs = [
+  [
+    'Who is Dispatch Pro for?',
+    'Servers that collect feedback for more than one project: a studio with a game and a launcher, an open-source organisation with a few repositories, or a community that supports several tools. If everything goes to one repository, Free has everything you need.',
+  ],
+  [
+    'How do I subscribe?',
+    'Run <code>/dispatch setup</code> in your server. Free servers see a <b>Dispatch Pro</b> button that shows the price and takes you through Discord’s checkout. Once the subscription is active, setup adds repositories instead of replacing the old one.',
+  ],
+  [
+    'Does it apply to one member or the whole server?',
+    'The whole server. It is a server subscription, so every member can choose between your connected repositories once it is active.',
+  ],
+  [
+    'Who handles payment?',
+    'Discord. Billing, cancellation and refunds go through Discord’s subscription system under its own terms. Dispatch is told whether your server is subscribed, and never sees payment details.',
+  ],
+  [
+    'What happens if I cancel?',
+    'Nothing is deleted. Your oldest connected repository keeps working like a Free server, and the others are paused. Subscribe again and they all work immediately, with no setup to repeat. Connecting a new repository while on Free replaces all of them, so setup warns you first.',
+  ],
+  [
+    `Is ${maxRepos} the limit?`,
+    `Yes, ${maxRepos} repositories per server. Setup shows how many you have connected, and tells you when you are at the limit so you can disconnect one first.`,
+  ],
+  [
+    'Do repositories share settings?',
+    'Yes. The triage queue, updates channel, staff role, labels, report types, cooldown and reward roles are server-wide and apply to every connected repository.',
+  ],
+  [
+    'Do I need a separate GitHub App install?',
+    'No. It is the same Dispatch GitHub App, installed on each repository you connect. Dispatch checks that you have push access to every one, and each request uses a short-lived token for just that repository.',
+  ],
+];
+
+const structured = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map(([q, a]) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: { '@type': 'Answer', text: a.replace(/<[^>]+>/g, '') },
+  })),
+};
+---
+
+<Base
+  title="Pricing — Dispatch"
+  description={`Dispatch is free for one repository. Dispatch Pro is ${price} a month and connects up to ${maxRepos} repositories to one Discord server.`}
+  path="/pricing/"
+  imageAlt="Dispatch pricing: free for one repository, Dispatch Pro for several."
+>
+  <main>
+    <div class="hero-bg">
+      <div class="wrap page-head">
+        <span class="index">Pricing</span>
+        <h1>Free for one repo. <em>Pro for the rest.</em></h1>
+        <p class="lede">
+          {`Everything Dispatch does is free for a single repository. Dispatch Pro lets one server send bug reports to up to ${maxRepos} repositories, for ${price} a month.`}
+        </p>
+      </div>
+    </div>
+
+    <section class="plans-section">
+      <div class="wrap">
+        <div class="cells two plans">
+          <div class="cell plan">
+            <span class="chip">Free</span>
+            <p class="plan-price"><b>$0</b><span>forever</span></p>
+            <p class="plan-for">Everything you need to turn Discord reports into GitHub issues.</p>
+            <ul class="points">
+              {free.map((item) => <li>{item}</li>)}
+            </ul>
+            <a class="button large ghost" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
+          </div>
+
+          <div class="cell plan featured">
+            <span class="chip admin">Dispatch Pro</span>
+            <p class="plan-price"><b>{price}</b><span>per server, per month</span></p>
+            <p class="plan-for">For servers that collect feedback on more than one project.</p>
+            <ul class="points">
+              {pro.map((item) => <li>{item}</li>)}
+            </ul>
+            <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
+            <p class="plan-note">Subscribe from <code>/dispatch setup</code> once the bot is in your server.</p>
+          </div>
+        </div>
+        <p class="command-note">Billed monthly through Discord, which shows the final price, including any taxes, at checkout.</p>
+      </div>
+    </section>
+
+    <section id="compare">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="index">01 — Compare</span>
+          <h2>What changes <em>with Pro.</em></h2>
+        </div>
+        <div class="table-wrap compare">
+          <table>
+            <thead><tr><th>Feature</th><th>Free</th><th>Pro</th></tr></thead>
+            <tbody>
+              {compare.map(([feature, a, b]) => (
+                <tr><td>{feature}</td><td>{a}</td><td>{b}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="index">02 — How it works</span>
+          <h2>One server, <em>several projects.</em></h2>
+        </div>
+        <div class="cells three">
+          <div class="cell">
+            <span class="num">01</span>
+            <h3>Connect each repository</h3>
+            <p>Run <code>/dispatch setup</code> once per repository. With Pro each one is added to the list, and you can see them all in <code>/dispatch settings</code>.</p>
+          </div>
+          <div class="cell">
+            <span class="num">02</span>
+            <h3>Members choose</h3>
+            <p>When someone runs <code>/report</code>, or reports a message from the Apps menu, they pick the project the bug belongs to before the form opens.</p>
+          </div>
+          <div class="cell">
+            <span class="num">03</span>
+            <h3>Filed in the right place</h3>
+            <p>Reports go to the repository they were meant for. With a triage queue, the card names the repository and Approve files the issue there.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="index">03 — Questions</span>
+          <h2>Before you <em>subscribe.</em></h2>
+        </div>
+        <div class="faq">
+          {faqs.map(([question, answer]) => (
+            <details>
+              <summary>{question}</summary>
+              <p set:html={answer} />
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap">
+        <h2>Start free. <em>Upgrade when you need to.</em></h2>
+        <p class="lede">Add Dispatch to your server and connect your first repository for free. Pro is one button in setup.</p>
+        <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+  </main>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(structured)} />
+</Base>

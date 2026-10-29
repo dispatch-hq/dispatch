@@ -78,16 +78,19 @@ export async function linkRepository(db: D1Database, link: RepoLink, multiple: b
 
   // Settings live on the guild row; make sure it exists for servers that link before configuring anything.
   const ensureGuild = db.prepare(`INSERT OR IGNORE INTO guilds (guild_id) VALUES (?)`).bind(link.guildId);
+  // The cap is part of the insert, so two links racing each other can't take a server past it.
   const upsert = db
     .prepare(
       `INSERT INTO guild_repos (guild_id, provider, installation_id, repo_id, repo_full_name, linked_by)
-       VALUES (?, ?, ?, ?, ?, ?)
+       SELECT ?1, ?2, ?3, ?4, ?5, ?6
+       WHERE (SELECT COUNT(*) FROM guild_repos WHERE guild_id = ?1) < ?7
+          OR EXISTS (SELECT 1 FROM guild_repos WHERE guild_id = ?1 AND provider = ?2 AND repo_id = ?4)
        ON CONFLICT (guild_id, provider, repo_id) DO UPDATE SET
          installation_id = excluded.installation_id,
          repo_full_name = excluded.repo_full_name,
          linked_by = excluded.linked_by`
     )
-    .bind(link.guildId, link.provider, link.installationId, link.repoId, link.fullName, link.linkedBy);
+    .bind(link.guildId, link.provider, link.installationId, link.repoId, link.fullName, link.linkedBy, MAX_REPOS_PER_GUILD);
 
   if (!multiple && others.length) {
     await db.batch([
@@ -98,7 +101,8 @@ export async function linkRepository(db: D1Database, link: RepoLink, multiple: b
     return 'replaced';
   }
 
-  await db.batch([ensureGuild, upsert]);
+  const [, inserted] = await db.batch([ensureGuild, upsert]);
+  if (!inserted || inserted.meta.changes === 0) return 'limit';
   if (current) return 'refreshed';
   return existing.length ? 'added' : 'linked';
 }

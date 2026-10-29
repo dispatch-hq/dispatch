@@ -143,7 +143,8 @@ Next: \`/dispatch settings\` to add a triage queue or updates channel, and \`/di
   );
 
   // Premium servers can keep going: a fresh link back into the picker, reusing the GitHub sign-in.
-  const another = grant.p
+  const connected = (await getGuildRepos(c.env.DB, grant.g)).length;
+  const another = grant.p && connected < MAX_REPOS_PER_GUILD
     ? githubAuthorizeUrl(c.env, await signToken<LinkState>(c.env.STATE_SECRET, { g: grant.g, u: grant.u, p: true }, LINK_TTL_SECONDS))
     : undefined;
 

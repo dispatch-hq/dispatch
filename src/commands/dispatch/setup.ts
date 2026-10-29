@@ -1,6 +1,7 @@
 import { makeLinkButton, makeSubCommand } from 'discord-hono';
 import { getGuildRepos, MAX_REPOS_PER_GUILD } from '../../db';
 import { signToken } from '../../lib/crypto';
+import { escapeMarkdown } from '../../lib/format';
 import { card, divider, EPHEMERAL_V2, row, section, text, view } from '../../lib/ui';
 import { factory } from '../../init';
 import { getProvider } from '../../providers';
@@ -20,15 +21,17 @@ export type LinkState = {
 
 export const LINK_TTL_SECONDS = 15 * 60;
 
-/** Linked repositories, one line each. Past the first, only Premium servers can use them. */
+/**
+ * Linked repositories as one text block, one line each, linking to the repository. A single text
+ * display keeps the message well inside Discord's 40-component limit however many are connected.
+ * Past the first, only Dispatch Pro servers can use them.
+ */
 export function repoLines(repos: GuildRepo[], premium: boolean) {
-  return repos.map((repo, index) => {
-    const paused = !premium && index > 0;
-    return section(
-      `**${repo.repo_full_name}**${paused ? '\n-# Paused — needs Dispatch Pro' : ''}`,
-      makeLinkButton(getProvider(repo.provider).repoUrl(repo.repo_full_name), 'Open')
-    );
+  const lines = repos.map((repo, index) => {
+    const link = `[${escapeMarkdown(repo.repo_full_name)}](${getProvider(repo.provider).repoUrl(repo.repo_full_name)})`;
+    return !premium && index > 0 ? `${link} · *paused, needs ${PREMIUM_NAME}*` : link;
   });
+  return [text(lines.join('\n'))];
 }
 
 /** What a free server is missing, with the button to get it. */
@@ -61,7 +64,7 @@ function summary(env: Bindings, repos: GuildRepo[], premium: boolean) {
         : `Connecting a repository replaces all ${repos.length} of these.`
     ),
     ...list,
-    ...upsell(env, 'Connect several repositories to one server, and let members choose which one a bug is for.'),
+    ...upsell(env, `${PREMIUM_NAME} connects up to ${MAX_REPOS_PER_GUILD} repositories to one server, and lets members choose which one a bug is for.`),
   ];
 }
 

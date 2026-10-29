@@ -34,11 +34,12 @@ const updated = 'October 29, 2026';
           <ul>
             <li><b>Reports:</b> the text a member submits (title, steps, environment, report type), the reporter's Discord user ID and username, the server it came from, its status, and the GitHub issue it became.</li>
             <li><b>Attachments:</b> screenshots or logs a member uploads with a report.</li>
-            <li><b>Server settings:</b> the Discord server ID, the channel and role IDs you choose (triage channel, updates channel, staff role, reward roles), labels, report types, cooldown, and the linked GitHub repository (its ID, name and installation ID).</li>
+            <li><b>Server settings:</b> the Discord server ID, the channel and role IDs you choose (triage channel, updates channel, staff role, reward roles), labels, report types, cooldown, and the linked GitHub repositories (each one's ID, name and installation ID).</li>
             <li><b>Drafts:</b> if a member uses <b>Apps → Report bug</b> on a message, that message's text is held briefly so the form can be pre-filled. Drafts older than a day are ignored and swept on the next write.</li>
           </ul>
           <p>Dispatch does not read message content in general. It only sees a message's text when a member chooses to report that specific message.</p>
-          <p>When an admin links a repository, they sign in with GitHub so Dispatch can confirm they have push access. The sign-in token is used once to list repositories and is not stored. Afterwards Dispatch uses short-lived installation tokens limited to the single linked repository.</p>
+          <p>When an admin links a repository, they sign in with GitHub so Dispatch can confirm they have push access. The sign-in token is used once to list repositories and is not stored. Afterwards Dispatch uses short-lived installation tokens limited to the one repository an issue is filed in.</p>
+          <p>If you subscribe to Dispatch Pro, Discord handles the payment. Discord tells Dispatch whether your server has an active subscription each time a command is used, and Dispatch does not receive or store payment details.</p>
         </section>
 
         <section>

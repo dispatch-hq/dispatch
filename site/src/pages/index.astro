@@ -45,7 +45,7 @@ const trust = [
   },
   {
     title: 'Repository scope',
-    body: 'Dispatch only touches the repositories you connect: one per server, or several with Premium.',
+    body: 'Dispatch only touches the repositories you connect: one per server, or up to 10 with Dispatch Pro.',
     points: [
       'Each request uses a short-lived GitHub token scoped to the single repository the issue is filed in.',
       'To link a repo, an admin signs in with GitHub and must have push access to it, so nobody can point reports at a repository they do not control.',
@@ -74,7 +74,7 @@ const commands = [
   { name: 'issues', icon: '/', category: 'Reporting', key: true, desc: 'Your open reports across every server using Dispatch. Works in DMs too.' },
   { name: 'stats', icon: '/', category: 'Community', desc: 'Report counts and reward progress for you or another member.' },
   { name: 'leaderboard', icon: '/', category: 'Community', desc: 'The top bug reporters in this server.' },
-  { name: 'dispatch setup', icon: '/', category: 'Setup', admin: true, key: true, desc: 'Connect GitHub repositories to this server. Premium servers can connect several.' },
+  { name: 'dispatch setup', icon: '/', category: 'Setup', admin: true, key: true, desc: 'Connect GitHub repositories to this server. Dispatch Pro servers can connect up to 10.' },
   { name: 'dispatch settings', icon: '/', category: 'Setup', admin: true, key: true, desc: 'Triage queue, updates channel, staff role, labels and cooldown.' },
   { name: 'dispatch disconnect', icon: '/', category: 'Setup', admin: true, desc: 'Unlink a connected repository.' },
   { name: 'dispatch rewards add', icon: '/', category: 'Rewards', admin: true, desc: 'Grant a role once a member has enough fixed bug reports.' },

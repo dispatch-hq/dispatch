@@ -40,7 +40,10 @@ const structuredData = {
   image,
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Discord',
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  offers: [
+    { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'USD' },
+    { '@type': 'Offer', name: 'Dispatch Pro', price: '1.99', priceCurrency: 'USD' },
+  ],
 };
 ---
 
@@ -101,6 +104,7 @@ const structuredData = {
           <a href="/#features">Features</a>
           <a href="/#trust">Trust</a>
           <a href="/#commands">Commands</a>
+          <a href="/pricing/">Pricing</a>
           <a href="/docs/">Docs</a>
           <a class="button small" href="/invite">Add to Discord</a>
         </nav>
@@ -124,7 +128,8 @@ const structuredData = {
         <a href="/#features"><i>02</i>Features</a>
         <a href="/#trust"><i>03</i>Trust</a>
         <a href="/#commands"><i>04</i>Commands</a>
-        <a href="/docs/"><i>05</i>Docs</a>
+        <a href="/pricing/"><i>05</i>Pricing</a>
+        <a href="/docs/"><i>06</i>Docs</a>
         <div class="mobile-menu-foot">
           <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
           <div class="mobile-menu-links">
@@ -147,6 +152,7 @@ const structuredData = {
             <a href="/#how">How it works</a>
             <a href="/#features">Features</a>
             <a href="/#commands">Commands</a>
+            <a href="/pricing/">Pricing</a>
           </div>
           <div>
             <h4>Trust</h4>

@@ -121,7 +121,7 @@ function intro({ premium, connected, max }: PickerMode): string {
     return `Bug reports from your server can go to any connected repository, and members choose which when they report. ${connected} of ${max} connected.`;
   }
   return connected
-    ? `Bug reports from your server will be filed in the repository you pick, which replaces ${connected === 1 ? 'the one' : 'the ones'} already connected. Dispatch Pro lets one server connect several.`
+    ? `Bug reports from your server will be filed in the repository you pick, which replaces ${connected === 1 ? 'the one' : 'the ones'} already connected. Dispatch Pro lets one server connect up to ${max}.`
     : 'Bug reports from your server will be filed as issues in the repository you pick.';
 }
 

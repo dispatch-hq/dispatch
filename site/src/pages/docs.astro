@@ -20,7 +20,7 @@ const commands = [
   ['/issues', 'Everyone', 'Your open reports across every server using Dispatch. Works in DMs too.'],
   ['/stats [member]', 'Everyone', 'Report counts and reward progress.'],
   ['/leaderboard', 'Everyone', 'Top reporters by fixed bugs.'],
-  ['/dispatch setup', 'Manage Server', 'Connect a GitHub repository. With Premium, add several; otherwise a new one replaces the old.'],
+  ['/dispatch setup', 'Manage Server', 'Connect a GitHub repository. With Dispatch Pro, add up to 10; otherwise a new one replaces the old.'],
   ['/dispatch settings', 'Manage Server', 'Triage queue, updates channel, staff role, labels, report types, cooldown, reporter DMs.'],
   ['/dispatch disconnect', 'Manage Server', 'Unlink a repository.'],
   ['/dispatch rewards add / remove / list', 'Manage Server', 'Configure reward roles.'],
@@ -77,6 +77,10 @@ const problems = [
             <li>Sign in with GitHub when asked, then pick the repository. Dispatch checks that you can push to it before linking.</li>
           </ol>
           <p>Members can now use <code>/report</code>. Everything else, such as a triage channel, labels and rewards, is optional and lives in <code>/dispatch settings</code>.</p>
+          <h3>Several repositories (Dispatch Pro)</h3>
+          <p>A server with <a href="/pricing/">Dispatch Pro</a> can connect up to 10 repositories. Run <code>/dispatch setup</code> again for each one: with Pro it adds the repository instead of replacing the old one. When a member reports a bug they pick which repository it is for, and the issue is filed there. In a triage queue, each card shows its repository and <b>Approve</b> files the issue in that one.</p>
+          <p>Labels, report types, the triage queue and rewards are shared by all of a server's repositories. <code>/dispatch disconnect</code> asks which repository to remove.</p>
+          <p>If a subscription ends, the oldest connected repository keeps working. The others are paused, not deleted, and work again as soon as Dispatch Pro returns.</p>
         </section>
 
         <section id="reporting">
@@ -156,6 +160,7 @@ const problems = [
             <li>Up to 3 attachments per report, 10 MB each.</li>
             <li>Allowed types: images, mp4, webm and mov videos, and txt, log and json files. Anything else is skipped and the reporter is told.</li>
             <li>Up to 10 report types per server.</li>
+            <li>One connected repository per server, or up to 10 with Dispatch Pro.</li>
             <li>Cooldown between reports from one member: 0 to 3600 seconds.</li>
           </ul>
         </section>
