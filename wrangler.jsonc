@@ -11,12 +11,12 @@
 	// GITHUB_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET, STATE_SECRET) are set with
 	// `wrangler secret put` — see docs/deployment.md.
 	"vars": {
-		"PUBLIC_URL": "https://dispatch.example.workers.dev",
+		"PUBLIC_URL": "https://dispatch.jakemackie.workers.dev",
 		"DISCORD_PUBLIC_KEY": "bc7c4172bab8726e81d0ebb8223b3b01acf09bb30c204738d346fd476ea620eb",
 		"DISCORD_APPLICATION_ID": "1530352178428907722",
-		"GITHUB_APP_ID": "",
-		"GITHUB_APP_SLUG": "",
-		"GITHUB_CLIENT_ID": ""
+		"GITHUB_APP_ID": "5517308",
+		"GITHUB_APP_SLUG": "dispatch-hq",
+		"GITHUB_CLIENT_ID": "Iv23lioZCB9KMg0ox3a2"
 	},
 
 	"d1_databases": [
