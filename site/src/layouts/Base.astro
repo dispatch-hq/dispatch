@@ -99,15 +99,29 @@ const structuredData = {
           <img src="/logo.svg" alt="" width="22" height="24" />
           <span>Dispatch</span>
         </a>
-        <nav class="nav-links">
-          <a href="/#how">How it works</a>
-          <a href="/#features">Features</a>
-          <a href="/#trust">Trust</a>
-          <a href="/#commands">Commands</a>
+        <nav class="nav-links" aria-label="Main">
+          <button class="nav-trigger" type="button" aria-expanded="false" aria-controls="mega-product">
+            Product<svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg>
+          </button>
+          <button class="nav-trigger" type="button" aria-expanded="false" aria-controls="mega-resources">
+            Resources<svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg>
+          </button>
           <a href="/pricing/">Pricing</a>
-          <a href="/docs/">Docs</a>
-          <a class="button small" href="/invite">Add to Discord</a>
         </nav>
+        <div class="nav-actions">
+          <a
+            class="nav-icon"
+            href="https://github.com/dispatch-hq/dispatch"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Dispatch on GitHub"
+          >
+            <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+          </a>
+          <a class="button small" href="/invite">Add to Discord</a>
+        </div>
         <button
           class="menu-toggle"
           type="button"
@@ -118,6 +132,51 @@ const structuredData = {
           <span></span>
           <span></span>
         </button>
+      </div>
+
+      <!-- Desktop dropdown panels. Hidden below 761px, where the mobile menu takes over. -->
+      <div class="mega" id="mega-product" hidden>
+        <div class="wrap mega-inner">
+          <div class="mega-main">
+            <p class="mega-label">Product</p>
+            <div class="mega-grid">
+              <a href="/#how"><i>01</i><b>How it works</b><span>From /report in Discord to a labelled GitHub issue in three steps.</span></a>
+              <a href="/#features"><i>02</i><b>Features</b><span>Triage buttons, reporter updates and attachments, kept in sync.</span></a>
+              <a href="/#trust"><i>03</i><b>Trust</b><span>Minimal permissions, repository scope and how your data is handled.</span></a>
+              <a href="/#commands"><i>04</i><b>Commands</b><span>Every slash command, who can run it and what it does.</span></a>
+            </div>
+          </div>
+          <aside class="mega-spot">
+            <p class="mega-label">Spotlight</p>
+            <a href="/pricing/">
+              <b>Dispatch Pro</b>
+              <span>Connect up to 10 repositories to a single server.</span>
+              <em>See pricing →</em>
+            </a>
+          </aside>
+        </div>
+      </div>
+
+      <div class="mega" id="mega-resources" hidden>
+        <div class="wrap mega-inner">
+          <div class="mega-main">
+            <p class="mega-label">Resources</p>
+            <div class="mega-grid">
+              <a href="/docs/"><i>01</i><b>Documentation</b><span>Setup, commands and configuration, start to finish.</span></a>
+              <a href="https://github.com/dispatch-hq/dispatch" target="_blank" rel="noopener noreferrer"><i>02</i><b>Source on GitHub ↗</b><span>Read the code, follow releases and star the project.</span></a>
+              <a href="https://github.com/dispatch-hq/dispatch/issues" target="_blank" rel="noopener noreferrer"><i>03</i><b>Report a problem ↗</b><span>Found a bug in Dispatch itself? Open an issue.</span></a>
+              <a href="/privacy/"><i>04</i><b>Terms &amp; Privacy</b><span>How Dispatch handles your data, and the rules of use.</span></a>
+            </div>
+          </div>
+          <aside class="mega-spot">
+            <p class="mega-label">Spotlight</p>
+            <a href="/docs/">
+              <b>Get set up in minutes</b>
+              <span>Invite the bot, connect a repository and send your first report.</span>
+              <em>Read the docs →</em>
+            </a>
+          </aside>
+        </div>
       </div>
     </header>
 
@@ -189,7 +248,53 @@ const structuredData = {
     </footer>
 
     <script>
-      const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle');
+      const header = document.querySelector<HTMLElement>('.nav');
+      const triggers = Array.from(document.querySelectorAll<HTMLButtonElement>('.nav-trigger'));
+      const hoverable = window.matchMedia('(hover: hover)');
+
+      if (header && triggers.length) {
+        let closeTimer: number | undefined;
+
+        const panelOf = (t: HTMLButtonElement) => document.getElementById(t.getAttribute('aria-controls')!)!;
+
+        const show = (active?: HTMLButtonElement) => {
+          clearTimeout(closeTimer);
+          for (const t of triggers) {
+            const on = t === active;
+            t.setAttribute('aria-expanded', String(on));
+            panelOf(t).hidden = !on;
+          }
+          header.classList.toggle('has-mega', !!active);
+        };
+
+        const scheduleClose = () => {
+          clearTimeout(closeTimer);
+          closeTimer = window.setTimeout(() => show(), 120);
+        };
+
+        for (const t of triggers) {
+          t.addEventListener('click', () => show(t.getAttribute('aria-expanded') === 'true' ? undefined : t));
+          t.addEventListener('mouseenter', () => hoverable.matches && show(t));
+          panelOf(t).addEventListener('click', (e) => {
+            if ((e.target as HTMLElement).closest('a')) show();
+          });
+        }
+        header.addEventListener('mouseenter', () => clearTimeout(closeTimer));
+        header.addEventListener('mouseleave', () => hoverable.matches && scheduleClose());
+        document.addEventListener('click', (e) => {
+          if (!header.contains(e.target as Node)) show();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key !== 'Escape') return;
+          const open = triggers.find((t) => t.getAttribute('aria-expanded') === 'true');
+          if (open) {
+            show();
+            open.focus();
+          }
+        });
+      }
+
+      const toggle =document.querySelector<HTMLButtonElement>('.menu-toggle');
       const menu = document.getElementById('mobile-menu');
       const desktop = window.matchMedia('(min-width: 761px)');
 
