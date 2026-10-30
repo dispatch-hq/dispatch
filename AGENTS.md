@@ -1,3 +1,16 @@
+# Discord Interactions
+
+## Rule: defer any handler that touches the database or an external API
+
+Discord requires an initial response to an interaction within **3 seconds**, or the user sees "The application did not respond" and the token is wasted. D1 queries, GitHub calls and Discord REST calls can all exceed that in edge cases (cold start, contention, retries).
+
+- If a command, component or modal handler awaits D1, GitHub, or any other network call **before** it responds, it must defer first: `return c.flags(...).resDefer(guarded(async (c) => { ...work...; await c.followup(view([...])) }))`.
+- Always wrap deferred work in `guarded()` from `src/commands/shared.ts` so a failure replaces the "thinking…" state with an error message.
+- Only reply synchronously (`c.res(...)`, `reply`, `deny`) when the handler needs no I/O, e.g. validating options, guild-only checks, or opening a modal with `resModal`.
+- Check ephemeral vs public when deferring: the flags passed before `resDefer` decide the visibility of the follow-up.
+- When adding or editing a handler, check the whole path, including any helper such as `panelFor` that queries the DB, not just the handler body.
+- Tests should cover the deferred path via the harness in `test/support/harness.ts`.
+
 # Cloudflare Workers
 
 STOP. Your knowledge of Cloudflare Workers APIs and limits may be outdated. Always retrieve current documentation before any Workers, KV, R2, D1, Durable Objects, Queues, Vectorize, AI, or Agents SDK task.
