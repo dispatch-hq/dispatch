@@ -1,0 +1,212 @@
+---
+import Base from '../layouts/Base.astro';
+
+const reasons = [
+  [
+    'No server to go down',
+    'Dispatch is a Cloudflare Worker, not a process on a machine. There is no host to reboot, patch or run out of memory. Each request runs in a fresh, isolated sandbox, and a crash in one never touches the next.',
+  ],
+  [
+    'Discord comes to us',
+    'Most bots hold a gateway connection open all day and have to reconnect when it drops. Dispatch has none. Discord sends each command to an HTTPS endpoint, so there is nothing to reconnect and nothing to miss while we deploy.',
+  ],
+  [
+    'Close to every server',
+    'Cloudflare runs the Worker in hundreds of cities and answers each request from the nearest one. A traffic spike is spread across the network instead of piling onto one box.',
+  ],
+  [
+    'Answers inside three seconds',
+    'Discord gives a bot three seconds to respond. Anything that touches the database or another API replies right away with “thinking…” and finishes in the background, so a slow query never turns into a failed command.',
+  ],
+  [
+    'Durable by default',
+    'Reports live in Cloudflare D1, which keeps storage durable and backed up, with point-in-time restore. Attachments are rehosted in R2, so a report still has its screenshots after the original Discord message is deleted.',
+  ],
+  [
+    'Shipped in small steps',
+    'Every change goes through typechecking and an end-to-end test suite that runs real signed interactions through the Worker before it merges. Deploys swap in a new version without a restart.',
+  ],
+];
+---
+
+<Base
+  title="Status — Dispatch"
+  description="Live status for Dispatch: ping, servers and members served, dependency health, and how running on Cloudflare Workers keeps the bot available."
+  path="/status/"
+  ogImage="/og-status.png"
+  imageAlt="Dispatch status: live ping, servers and how the bot stays online."
+>
+  <main>
+    <div class="hero-bg">
+      <div class="wrap page-head">
+        <span class="index">Status</span>
+        <h1>Always on, <em>by design.</em></h1>
+        <p class="lede">
+          Live numbers from the running bot, and the reasons it stays up.
+        </p>
+      </div>
+    </div>
+
+    <section class="status-section">
+      <div class="wrap">
+        <div class="status-banner" id="banner" data-state="loading" role="status" aria-live="polite">
+          <span class="dot" aria-hidden="true"></span>
+          <b id="banner-text">Checking…</b>
+          <span id="banner-note">Contacting the bot</span>
+        </div>
+
+        <div class="cells three status-grid">
+          <div class="cell stat">
+            <span class="num">Live ping</span>
+            <p class="stat-value"><b id="ping">—</b><span>ms</span></p>
+            <svg class="spark" id="spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+              <polyline id="spark-line" points="" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"></polyline>
+            </svg>
+            <p class="stat-note" id="ping-note">Round trip from your browser to the nearest edge.</p>
+          </div>
+
+          <div class="cell stat">
+            <span class="num">Servers</span>
+            <p class="stat-value"><b id="servers">—</b></p>
+            <p class="stat-note">Discord servers with Dispatch installed.</p>
+          </div>
+
+          <div class="cell stat">
+            <span class="num">Members watched over</span>
+            <p class="stat-value"><b id="members">—</b></p>
+            <p class="stat-note">Across those servers. Someone in two servers counts twice.</p>
+          </div>
+        </div>
+
+        <div class="cells three status-grid checks">
+          <div class="cell stat">
+            <span class="num">Worker</span>
+            <p class="stat-state" id="worker-state">—</p>
+            <p class="stat-note" id="worker-note">Answering from <span id="colo">the nearest edge</span>.</p>
+          </div>
+          <div class="cell stat">
+            <span class="num">Database</span>
+            <p class="stat-state" id="db-state">—</p>
+            <p class="stat-note" id="db-note">Cloudflare D1 round trip.</p>
+          </div>
+          <div class="cell stat">
+            <span class="num">Discord API</span>
+            <p class="stat-state" id="discord-state">—</p>
+            <p class="stat-note" id="discord-note">Time to read the server list.</p>
+          </div>
+        </div>
+
+        <p class="command-note" id="updated">Updates every few seconds.</p>
+      </div>
+    </section>
+
+    <section id="why">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="index">01 — How it stays up</span>
+          <h2>Why Workers <em>keep it running.</em></h2>
+        </div>
+        <div class="cells three">
+          {reasons.map(([title, body], i) => (
+            <div class="cell">
+              <span class="num">{String(i + 1).padStart(2, '0')}</span>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </div>
+          ))}
+        </div>
+        <p class="command-note">
+          This page shows what is happening right now, not a promise. If something is wrong, <a href="https://github.com/dispatch-hq/dispatch/issues" target="_blank" rel="noopener noreferrer">open an issue</a>.
+        </p>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap">
+        <h2>Bug reports that <em>don’t go missing.</em></h2>
+        <p class="lede">Add Dispatch to your server and connect a repository in a couple of minutes.</p>
+        <a class="button large" href="/invite">Add to Discord <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id: string) => document.getElementById(id)!;
+    const set = (id: string, value: string) => ($(id).textContent = value);
+
+    const PING_EVERY_MS = 3000;
+    const STATUS_EVERY_MS = 30000;
+    const KEEP = 30;
+    const samples: number[] = [];
+    const number = new Intl.NumberFormat('en-US');
+
+    const banner = (state: 'ok' | 'down' | 'degraded', text: string, note: string) => {
+      $('banner').dataset.state = state;
+      set('banner-text', text);
+      set('banner-note', note);
+    };
+
+    const health = (id: string, check: { ok: boolean; ms: number | null } | undefined, up: string) => {
+      const el = $(`${id}-state`);
+      el.dataset.ok = String(!!check?.ok);
+      el.textContent = check?.ok ? up : 'Unreachable';
+    };
+
+    function draw() {
+      const max = Math.max(...samples, 1);
+      const step = 120 / (KEEP - 1);
+      const offset = (KEEP - samples.length) * step;
+      $('spark-line').setAttribute(
+        'points',
+        samples.map((ms, i) => `${(offset + i * step).toFixed(1)},${(30 - (ms / max) * 28).toFixed(1)}`).join(' ')
+      );
+    }
+
+    async function ping() {
+      const started = performance.now();
+      try {
+        const res = await fetch(`/api/ping?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(String(res.status));
+        const body = (await res.json()) as { colo: string | null };
+        const ms = Math.max(1, Math.round(performance.now() - started));
+        samples.push(ms);
+        if (samples.length > KEEP) samples.shift();
+        set('ping', String(ms));
+        const avg = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
+        set('ping-note', `Average ${avg} ms over the last ${samples.length}. Round trip from your browser to the nearest edge.`);
+        set('worker-state', 'Operational');
+        $('worker-state').dataset.ok = 'true';
+        if (body.colo) set('colo', body.colo);
+        draw();
+      } catch {
+        set('ping', '—');
+        set('worker-state', 'Unreachable');
+        $('worker-state').dataset.ok = 'false';
+        banner('down', 'Can’t reach Dispatch', 'Your connection or the Worker is down. Retrying.');
+      }
+    }
+
+    async function status() {
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        const body = await res.json();
+        health('db', body.checks.database, 'Operational');
+        health('discord', body.checks.discord, 'Operational');
+        set('db-note', body.checks.database.ms == null ? 'Cloudflare D1 round trip.' : `Cloudflare D1 round trip: ${body.checks.database.ms} ms.`);
+        set('discord-note', body.checks.discord.ms == null ? 'Time to read the server list.' : `Reading the server list took ${body.checks.discord.ms} ms.`);
+        if (body.servers != null) set('servers', number.format(body.servers));
+        if (body.members != null) set('members', number.format(body.members));
+        if (body.ok) banner('ok', 'All systems operational', 'The Worker, database and Discord API are all responding.');
+        else banner('degraded', 'Something is degraded', 'A dependency isn’t responding. Commands may be slow or fail.');
+        set('updated', `Last checked ${new Date().toLocaleTimeString()}`);
+      } catch {
+        banner('down', 'Can’t reach Dispatch', 'Your connection or the Worker is down. Retrying.');
+      }
+    }
+
+    ping();
+    status();
+    setInterval(ping, PING_EVERY_MS);
+    setInterval(status, STATUS_EVERY_MS);
+  </script>
+</Base>

@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 
 // Add paths here as the site grows.
-const paths = ['/', '/pricing/', '/docs/', '/terms/', '/privacy/'];
+const paths = ['/', '/pricing/', '/docs/', '/status/', '/terms/', '/privacy/'];
 
 export const GET: APIRoute = ({ site }) => {
   const urls = paths.map((path) => `  <url><loc>${new URL(path, site).href}</loc></url>`).join('\n');

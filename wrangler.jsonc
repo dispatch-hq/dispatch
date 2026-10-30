@@ -36,7 +36,7 @@
 		"binding": "ASSETS",
 		// Unknown paths get the site's 404.html (built from site/src/pages/404.astro).
 		"not_found_handling": "404-page",
-		"run_worker_first": ["/", "/interactions", "/invite", "/github/*", "/files/*"]
+		"run_worker_first": ["/", "/interactions", "/invite", "/github/*", "/files/*", "/api/*"]
 	},
 
 	"d1_databases": [

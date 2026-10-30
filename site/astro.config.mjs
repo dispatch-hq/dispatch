@@ -11,7 +11,8 @@ export default defineConfig({
   // `/privacy` rather than `/privacy.html`, matching the Worker's html_handling.
   build: { format: 'directory' },
   devToolbar: { enabled: false },
-  // `astro dev` only serves the static site. Worker routes such as /invite are
-  // forwarded to `npm run dev` (wrangler) when it is running.
-  vite: { server: { proxy: { '/invite': 'http://localhost:8787' } } },
+  // `astro dev` only serves the static site. Worker routes such as /invite and
+  // the /status page's /api calls are forwarded to `npm run dev` (wrangler)
+  // when it is running.
+  vite: { server: { proxy: { '/invite': 'http://localhost:8787', '/api': 'http://localhost:8787' } } },
 });

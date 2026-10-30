@@ -3,6 +3,7 @@ import * as handlers from './commands';
 import { factory } from './init';
 import type { AppEnv } from './types';
 import { githubRoutes } from './web/github';
+import { statusRoutes } from './web/status';
 
 const bot = factory.discord().loader(Object.values(handlers));
 
@@ -32,6 +33,9 @@ app.post('/', interactions);
 app.post('/interactions', interactions);
 
 app.route('/github', githubRoutes);
+
+// Live numbers for the site's /status page.
+app.route('/api', statusRoutes);
 
 // Rehosted report attachments (see services/attachments.ts).
 app.get('/files/:key{reports/.+}', async (c) => {
