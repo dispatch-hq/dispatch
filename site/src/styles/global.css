@@ -2671,3 +2671,115 @@ footer {
     animation: none;
   }
 }
+
+/* HALLOWEEN-START ---------------------------------------------------------- */
+/* Seasonal touches. Delete this block (and the ghost in Base.astro) to undo them. */
+
+/* Cobweb tucked into the top-left corner of the hero. */
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 220px;
+  height: 220px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='%23eeeef2' stroke-width='0.6'%3E%3Cpath d='M0 0L100 0M0 0L90 40M0 0L65 65M0 0L40 90M0 0L0 100'/%3E%3Cpath d='M22 0Q16 16 0 22M42 0Q30 30 0 42M62 0Q44 44 0 62M82 0Q58 58 0 82'/%3E%3C/svg%3E")
+    no-repeat top left / contain;
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+/* First-visit entrance (see Base.astro): a ghost floats up in front of a curtain, then sweeps it away to reveal the page. */
+.ghost-curtain {
+  display: none;
+}
+
+html.ghost-run {
+  overflow: hidden;
+}
+
+html.ghost-run .ghost-curtain {
+  display: grid;
+  place-items: center;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background:
+    radial-gradient(600px 400px at 50% 55%, rgba(38, 46, 99, 0.7), transparent 70%),
+    var(--bg);
+  animation: curtain-lift 0.9s var(--ease) 1.9s forwards;
+}
+
+/* Scalloped hem along the bottom edge, like a sheet. */
+html.ghost-run .ghost-curtain::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: radial-gradient(circle at 28px 0, var(--bg) 27px, transparent 28px) 0 0 / 56px 28px repeat-x;
+}
+
+.ghost-curtain .ghost {
+  width: clamp(150px, 26vmin, 240px);
+  color: var(--brand);
+  filter: drop-shadow(0 0 28px rgba(132, 151, 250, 0.35));
+  opacity: 0;
+  animation:
+    ghost-in 1s linear 0.2s forwards,
+    ghost-bob 0.5s ease-in-out 1.2s,
+    ghost-away 0.9s cubic-bezier(0.5, 0, 0.75, 0) 1.7s forwards;
+}
+
+.ghost-curtain .ghost svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Swoops in from the lower left on an arc, overshoots the middle, then settles. */
+@keyframes ghost-in {
+  0% {
+    opacity: 0;
+    transform: translate(-60vw, 45vh) rotate(-28deg) scale(0.6);
+    animation-timing-function: cubic-bezier(0.3, 0.6, 0.4, 1);
+  }
+  15% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+    transform: translate(6vw, -5vh) rotate(7deg) scale(1.06);
+    animation-timing-function: ease-in-out;
+  }
+  82% {
+    transform: translate(-1.5vw, 1.5vh) rotate(-3deg) scale(0.98);
+    animation-timing-function: ease-out;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ghost-bob {
+  50% {
+    translate: 0 -18px;
+    rotate: 3deg;
+  }
+}
+
+@keyframes ghost-away {
+  to {
+    opacity: 0;
+    transform: translateY(-70vh) scale(1.5);
+  }
+}
+
+@keyframes curtain-lift {
+  to {
+    transform: translateY(calc(-100% - 28px));
+  }
+}
+/* HALLOWEEN-END */

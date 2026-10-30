@@ -87,12 +87,42 @@ const structuredData = {
     <meta name="theme-color" content="#8497fa" />
     <meta name="color-scheme" content="dark" />
 
+    <!-- HALLOWEEN-START: first-visit ghost flag -->
+    <!-- First visit only: flag it before paint, and remember it so the ghost never replays. -->
+    <script is:inline>
+      try {
+        if (!localStorage.getItem('dispatch-ghost-seen')) {
+          localStorage.setItem('dispatch-ghost-seen', '1');
+          document.documentElement.classList.add('ghost-run');
+        }
+      } catch (e) {}
+    </script>
+    <!-- HALLOWEEN-END -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="sitemap" href="/sitemap.xml" />
     {!noindex && <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />}
   </head>
   <body>
+    <!-- HALLOWEEN-START: ghost curtain -->
+    <div class="ghost-curtain" aria-hidden="true">
+      <div class="ghost">
+        <svg viewBox="0 0 200 240" fill="currentColor">
+          <defs>
+            <mask id="ghost-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="240">
+              <rect width="200" height="240" fill="#fff"></rect>
+              <rect x="62" y="68" width="26" height="30" fill="#000"></rect>
+              <rect x="112" y="68" width="26" height="30" fill="#000"></rect>
+              <rect x="0" y="126" width="200" height="9" fill="#000"></rect>
+              <rect x="0" y="156" width="200" height="9" fill="#000"></rect>
+              <rect x="0" y="186" width="200" height="9" fill="#000"></rect>
+            </mask>
+          </defs>
+          <path mask="url(#ghost-cut)" d="M20 110A80 80 0 0 1 180 110V222L150 192L125 222L100 192L75 222L50 192L20 222Z"></path>
+        </svg>
+      </div>
+    <!-- HALLOWEEN-END -->
+    </div>
     <header class="nav">
       <div class="wrap nav-inner">
         <a class="logo" href="/">
@@ -251,6 +281,18 @@ const structuredData = {
     </footer>
 
     <script>
+      // HALLOWEEN-START: remove the ghost curtain once it has lifted
+      // Drop the entrance once the curtain has lifted (the timeout covers a missed animationend).
+      const curtain = document.querySelector('.ghost-curtain');
+      if (curtain && document.documentElement.classList.contains('ghost-run')) {
+        const done = () => document.documentElement.classList.remove('ghost-run');
+        curtain.addEventListener('animationend', (e) => {
+          if ((e as AnimationEvent).animationName === 'curtain-lift') done();
+        });
+        setTimeout(done, 4500);
+      }
+      // HALLOWEEN-END
+
       const header = document.querySelector<HTMLElement>('.nav');
       const triggers = Array.from(document.querySelectorAll<HTMLButtonElement>('.nav-trigger'));
       const hoverable = window.matchMedia('(hover: hover)');
