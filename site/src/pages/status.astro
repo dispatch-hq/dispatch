@@ -1,6 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
 
+const rounds = 10;
+
 const reasons = [
   [
     'No server to go down',
@@ -31,7 +33,7 @@ const reasons = [
 
 <Base
   title="Status — Dispatch"
-  description="Live status for Dispatch: ping, servers and members served, dependency health, and how running on Cloudflare Workers keeps the bot available."
+  description="Live status for Dispatch: test your ping, see servers and members served, dependency health, and how running on Cloudflare Workers keeps the bot available."
   path="/status/"
   ogImage="/og-status.png"
   imageAlt="Dispatch status: live ping, servers and how the bot stays online."
@@ -42,7 +44,7 @@ const reasons = [
         <span class="index">Status</span>
         <h1>Always on, <em>by design.</em></h1>
         <p class="lede">
-          Live numbers from the running bot, and the reasons it stays up.
+          Numbers from the running bot, a ping test to try for yourself, and the reasons it stays up.
         </p>
       </div>
     </div>
@@ -56,13 +58,18 @@ const reasons = [
         </div>
 
         <div class="cells three status-grid">
-          <div class="cell stat">
-            <span class="num">Live ping</span>
+          <div class="cell stat ping-cell">
+            <span class="num">Ping test</span>
             <p class="stat-value"><b id="ping">—</b><span>ms</span></p>
-            <svg class="spark" id="spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
-              <polyline id="spark-line" points="" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"></polyline>
+            <svg class="graph" viewBox="0 0 120 56" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="0" y1="55.5" x2="120" y2="55.5" stroke="var(--border)" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+              <polyline id="graph-line" points="" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></polyline>
             </svg>
-            <p class="stat-note" id="ping-note">Round trip from your browser to the nearest edge.</p>
+            <p class="ping-rank" id="ping-rank" hidden></p>
+            <p class="stat-note" id="ping-note" aria-live="polite">
+              {`${rounds} quick pings from your browser to the nearest edge. How fast are you?`}
+            </p>
+            <button class="button small" type="button" id="ping-run">Check ping</button>
           </div>
 
           <div class="cell stat">
@@ -96,7 +103,7 @@ const reasons = [
           </div>
         </div>
 
-        <p class="command-note" id="updated">Updates every few seconds.</p>
+        <p class="command-note" id="updated">Checking…</p>
       </div>
     </section>
 
@@ -130,62 +137,124 @@ const reasons = [
     </section>
   </main>
 
-  <script>
-    const $ = (id: string) => document.getElementById(id)!;
-    const set = (id: string, value: string) => ($(id).textContent = value);
+  <script is:inline define:vars={{ rounds }}>
+    const $ = (id) => document.getElementById(id);
+    const set = (id, value) => ($(id).textContent = value);
 
-    const PING_EVERY_MS = 3000;
-    const STATUS_EVERY_MS = 30000;
-    const KEEP = 30;
-    const samples: number[] = [];
+    const BEST_KEY = 'dispatch-best-ping';
     const number = new Intl.NumberFormat('en-US');
+    const run = $('ping-run');
 
-    const banner = (state: 'ok' | 'down' | 'degraded', text: string, note: string) => {
+    const banner = (state, text, note) => {
       $('banner').dataset.state = state;
       set('banner-text', text);
       set('banner-note', note);
     };
 
-    const health = (id: string, check: { ok: boolean; ms: number | null } | undefined, up: string) => {
+    const health = (id, check, up) => {
       const el = $(`${id}-state`);
       el.dataset.ok = String(!!check?.ok);
       el.textContent = check?.ok ? up : 'Unreachable';
     };
 
-    function draw() {
-      const max = Math.max(...samples, 1);
-      const step = 120 / (KEEP - 1);
-      const offset = (KEEP - samples.length) * step;
-      $('spark-line').setAttribute(
-        'points',
-        samples.map((ms, i) => `${(offset + i * step).toFixed(1)},${(30 - (ms / max) * 28).toFixed(1)}`).join(' ')
-      );
+    const workerState = (ok) => {
+      set('worker-state', ok ? 'Operational' : 'Unreachable');
+      $('worker-state').dataset.ok = String(ok);
+    };
+
+    // [slower than this many ms stops being the tier, label]
+    const tiers = [
+      [40, 'Lightning'],
+      [90, 'Snappy'],
+      [180, 'Steady'],
+      [Infinity, 'Scenic route'],
+    ];
+
+    // Personal best lives in this browser only; storage can be blocked, so it's optional.
+    const readBest = () => {
+      try {
+        const value = Number(localStorage.getItem(BEST_KEY));
+        return value > 0 ? value : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const saveBest = (ms) => {
+      try {
+        localStorage.setItem(BEST_KEY, String(ms));
+      } catch {}
+    };
+
+    // The vertical axis never covers less than MIN_RANGE_MS, centred on the run, so a
+    // steady connection that moves by a millisecond or two draws a calm line rather
+    // than a dramatic one. A genuinely jumpy connection still fills the graph.
+    const MIN_RANGE_MS = 40;
+
+    function draw(times) {
+      const low = Math.min(...times);
+      const high = Math.max(...times);
+      const range = Math.max(high - low, MIN_RANGE_MS);
+      const middle = (low + high) / 2;
+      const points = times.map((ms, i) => {
+        const x = (i / (rounds - 1)) * 120;
+        const y = 28 - ((ms - middle) / range) * 44;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      });
+      $('graph-line').setAttribute('points', points.join(' '));
     }
 
     async function ping() {
       const started = performance.now();
+      const res = await fetch(`/api/ping?t=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(String(res.status));
+      const body = await res.json();
+      return { ms: Math.max(1, Math.round(performance.now() - started)), colo: body.colo };
+    }
+
+    async function test() {
+      run.disabled = true;
+      run.textContent = 'Pinging…';
+      $('ping-rank').hidden = true;
+      $('graph-line').setAttribute('points', '');
+      set('ping-note', 'Warming up the connection…');
+
+      const times = [];
       try {
-        const res = await fetch(`/api/ping?t=${Date.now()}`, { cache: 'no-store' });
-        if (!res.ok) throw new Error(String(res.status));
-        const body = (await res.json()) as { colo: string | null };
-        const ms = Math.max(1, Math.round(performance.now() - started));
-        samples.push(ms);
-        if (samples.length > KEEP) samples.shift();
-        set('ping', String(ms));
-        const avg = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
-        set('ping-note', `Average ${avg} ms over the last ${samples.length}. Round trip from your browser to the nearest edge.`);
-        set('worker-state', 'Operational');
-        $('worker-state').dataset.ok = 'true';
-        if (body.colo) set('colo', body.colo);
-        draw();
+        // The first request pays for the TLS handshake, so it is thrown away.
+        await ping();
+        let colo = null;
+        for (let i = 0; i < rounds; i++) {
+          const result = await ping();
+          colo = result.colo ?? colo;
+          times.push(result.ms);
+          draw(times);
+          set('ping', String(result.ms));
+        }
+
+        const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+        const record = readBest();
+        const beat = record === null || avg < record;
+        if (beat) saveBest(avg);
+
+        set('ping', String(avg));
+        set('ping-rank', tiers.find(([limit]) => avg < limit)[1]);
+        $('ping-rank').hidden = false;
+        const verdict = record === null ? 'First run, so that is your record.' : beat ? `New personal best, up from ${record} ms!` : `Your best is ${record} ms.`;
+        set('ping-note', `Average of ${rounds}. Fastest ${Math.min(...times)} ms, slowest ${Math.max(...times)} ms. ${verdict}`);
+        workerState(true);
+        if (colo) set('colo', colo);
       } catch {
         set('ping', '—');
-        set('worker-state', 'Unreachable');
-        $('worker-state').dataset.ok = 'false';
-        banner('down', 'Can’t reach Dispatch', 'Your connection or the Worker is down. Retrying.');
+        set('ping-note', 'The test failed. Your connection or the Worker is down.');
+        workerState(false);
+      } finally {
+        run.disabled = false;
+        run.textContent = 'Go again';
       }
     }
 
+    // Read once on load; the ping test is the only thing that talks to the Worker after that.
     async function status() {
       try {
         const res = await fetch('/api/status', { cache: 'no-store' });
@@ -194,19 +263,21 @@ const reasons = [
         health('discord', body.checks.discord, 'Operational');
         set('db-note', body.checks.database.ms == null ? 'Cloudflare D1 round trip.' : `Cloudflare D1 round trip: ${body.checks.database.ms} ms.`);
         set('discord-note', body.checks.discord.ms == null ? 'Time to read the server list.' : `Reading the server list took ${body.checks.discord.ms} ms.`);
+        workerState(true);
+        if (body.colo) set('colo', body.colo);
         if (body.servers != null) set('servers', number.format(body.servers));
         if (body.members != null) set('members', number.format(body.members));
         if (body.ok) banner('ok', 'All systems operational', 'The Worker, database and Discord API are all responding.');
         else banner('degraded', 'Something is degraded', 'A dependency isn’t responding. Commands may be slow or fail.');
-        set('updated', `Last checked ${new Date().toLocaleTimeString()}`);
+        set('updated', `Checked ${new Date().toLocaleTimeString()}. Reload to check again.`);
       } catch {
-        banner('down', 'Can’t reach Dispatch', 'Your connection or the Worker is down. Retrying.');
+        banner('down', 'Can’t reach Dispatch', 'Your connection or the Worker is down.');
+        workerState(false);
+        set('updated', 'Reload to try again.');
       }
     }
 
-    ping();
+    run.addEventListener('click', test);
     status();
-    setInterval(ping, PING_EVERY_MS);
-    setInterval(status, STATUS_EVERY_MS);
   </script>
 </Base>
