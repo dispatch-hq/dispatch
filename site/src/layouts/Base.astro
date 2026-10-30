@@ -5,6 +5,8 @@ import '@fontsource-variable/dm-sans/wght.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '../styles/global.css';
+import dmSansUrl from '@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2?url';
+import frauncesUrl from '@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2?url';
 
 interface Props {
   title?: string;
@@ -16,35 +18,37 @@ interface Props {
   /** Path of the 1200×630 social preview image. */
   ogImage?: string;
   imageAlt?: string;
+  /** Extra schema.org objects for this page, emitted alongside the breadcrumb. */
+  schema?: Record<string, unknown>[];
 }
 
 const siteName = 'Dispatch';
 const {
-  title = 'Dispatch — Discord bug reports, straight to GitHub',
+  title = 'Dispatch — Discord bot that turns bug reports into GitHub issues',
   description = 'Dispatch turns /report in Discord into GitHub issues. Triage with a button, keep reporters posted, and reward your best bug hunters with roles.',
   path = Astro.url.pathname,
   noindex = false,
   ogImage = '/og.png',
   imageAlt = 'Dispatch: bug reports from Discord, straight to GitHub.',
+  schema = [],
 } = Astro.props;
 
 const canonical = new URL(path, Astro.site).href;
 const image = new URL(ogImage, Astro.site).href;
 
-const structuredData = {
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: siteName,
-  description,
-  url: canonical,
-  image,
-  applicationCategory: 'DeveloperApplication',
-  operatingSystem: 'Discord',
-  offers: [
-    { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'USD' },
-    { '@type': 'Offer', name: 'Dispatch Pro', price: '1.99', priceCurrency: 'USD' },
+// Inner pages get a Home > Page breadcrumb; the page name is the path segment.
+const segment = path.split('/').filter(Boolean)[0];
+const breadcrumb = segment && {
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: siteName, item: new URL('/', Astro.site).href },
+    { '@type': 'ListItem', position: 2, name: segment[0].toUpperCase() + segment.slice(1), item: canonical },
   ],
 };
+const structuredData = [...schema, ...(breadcrumb ? [breadcrumb] : [])].map((item) => ({
+  '@context': 'https://schema.org',
+  ...item,
+}));
 ---
 
 <!doctype html>
@@ -101,7 +105,11 @@ const structuredData = {
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="sitemap" href="/sitemap.xml" />
-    {!noindex && <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />}
+    <link rel="preload" href={dmSansUrl} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={frauncesUrl} as="font" type="font/woff2" crossorigin />
+    {!noindex && structuredData.length > 0 && (
+      <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+    )}
   </head>
   <body>
     <!-- HALLOWEEN-START: ghost curtain -->

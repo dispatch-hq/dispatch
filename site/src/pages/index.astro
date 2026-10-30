@@ -99,9 +99,35 @@ const story = [
 ];
 
 const pad = (n: number) => String(n).padStart(2, '0');
+
+const origin = new URL('/', Astro.site).href;
+const schema = [
+  {
+    '@type': 'SoftwareApplication',
+    name: 'Dispatch',
+    description:
+      'Discord bot that turns /report into GitHub issues, with a triage queue, reporter updates and reward roles.',
+    url: origin,
+    image: new URL('/og.png', Astro.site).href,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Discord',
+    offers: [
+      { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'USD' },
+      { '@type': 'Offer', name: 'Dispatch Pro', price: '1.99', priceCurrency: 'USD' },
+    ],
+  },
+  {
+    '@type': 'Organization',
+    name: 'Dispatch',
+    url: origin,
+    logo: new URL('/apple-touch-icon.png', Astro.site).href,
+    sameAs: ['https://github.com/dispatch-hq/dispatch'],
+  },
+  { '@type': 'WebSite', name: 'Dispatch', url: origin },
+];
 ---
 
-<Base>
+<Base schema={schema}>
   <main>
     <div class="hero-bg">
       <div class="wrap hero">

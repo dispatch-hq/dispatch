@@ -79,7 +79,20 @@ const structured = {
 ---
 
 <Base
-  title="Pricing — Dispatch"
+  schema={[
+    {
+      '@type': 'SoftwareApplication',
+      name: 'Dispatch',
+      url: new URL('/', Astro.site).href,
+      applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'Discord',
+      offers: [
+        { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'USD' },
+        { '@type': 'Offer', name: 'Dispatch Pro', price: price.replace('$', ''), priceCurrency: 'USD' },
+      ],
+    },
+  ]}
+  title="Dispatch Pricing — Free and Pro plans for Discord bug reports"
   description={`Dispatch is free for one repository. Dispatch Pro is ${price} a month and connects up to ${maxRepos} repositories to one Discord server.`}
   path="/pricing/"
   ogImage="/og-pricing.png"
