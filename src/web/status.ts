@@ -102,10 +102,6 @@ const noStore = { 'cache-control': 'no-store' };
 
 export const statusRoutes = new Hono<AppEnv>();
 
-// What the page's "live ping" measures: a round trip to the nearest edge, with no
-// database or Discord call, so it shows the network and the Worker rather than a dependency.
-statusRoutes.get('/ping', (c) => c.json({ ok: true, colo: colo(c.req.raw) }, 200, noStore));
-
 statusRoutes.get('/status', async (c) => {
   const status = await getStatus(c.env, c.req.raw);
   return c.json(status, status.ok ? 200 : 503, noStore);

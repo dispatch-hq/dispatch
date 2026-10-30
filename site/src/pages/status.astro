@@ -1,8 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
 
-const rounds = 10;
-
 const reasons = [
   [
     'No server to go down',
@@ -33,10 +31,10 @@ const reasons = [
 
 <Base
   title="Status — Dispatch"
-  description="Live status for Dispatch: test your ping, see servers and members served, dependency health, and how running on Cloudflare Workers keeps the bot available."
+  description="Live status for Dispatch: servers and members served, dependency health, and how running on Cloudflare Workers keeps the bot available."
   path="/status/"
   ogImage="/og-status.png"
-  imageAlt="Dispatch status: live ping, servers and how the bot stays online."
+  imageAlt="Dispatch status: servers, health and how the bot stays online."
 >
   <main>
     <div class="hero-bg">
@@ -44,7 +42,7 @@ const reasons = [
         <span class="index">Status</span>
         <h1>Always on, <em>by design.</em></h1>
         <p class="lede">
-          Numbers from the running bot, a ping test to try for yourself, and the reasons it stays up.
+          Numbers from the running bot, and the reasons it stays up.
         </p>
       </div>
     </div>
@@ -57,19 +55,18 @@ const reasons = [
           <span id="banner-note">Contacting the bot</span>
         </div>
 
-        <div class="cells three status-grid">
-          <div class="cell stat ping-cell">
-            <span class="num">Ping test</span>
-            <p class="stat-value"><b id="ping">—</b><span>ms</span></p>
-            <svg class="graph" viewBox="0 0 120 56" preserveAspectRatio="none" aria-hidden="true">
-              <line x1="0" y1="55.5" x2="120" y2="55.5" stroke="var(--border)" stroke-width="1" vector-effect="non-scaling-stroke"></line>
-              <polyline id="graph-line" points="" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></polyline>
+        <div class="cells three status-grid top">
+          <div class="cell stat powered">
+            <svg class="powered-logo" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M16.5088 16.8447c.1475-.5068.0908-.9707-.1553-1.3154-.2246-.3164-.6045-.499-1.0615-.5205l-8.6592-.1123a.1559.1559 0 0 1-.1333-.0713c-.0283-.042-.0351-.0986-.021-.1553.0278-.084.1123-.1484.2036-.1562l8.7359-.1123c1.0351-.0489 2.1601-.8868 2.5537-1.9136l.499-1.3013c.0215-.0561.0293-.1128.0147-.168-.5625-2.5463-2.835-4.4453-5.5499-4.4453-2.5039 0-4.6284 1.6177-5.3876 3.8614-.4927-.3658-1.1187-.5625-1.794-.499-1.2026.119-2.1665 1.083-2.2861 2.2856-.0283.31-.0069.6128.0635.894C1.5683 13.171 0 14.7754 0 16.752c0 .1748.0142.3515.0352.5273.0141.083.0844.1475.1689.1475h15.9814c.0909 0 .1758-.0645.2032-.1553l.12-.4268zm2.7568-5.5634c-.0771 0-.1611 0-.2383.0112-.0566 0-.1054.0415-.127.0976l-.3378 1.1744c-.1475.5068-.0918.9707.1543 1.3164.2256.3164.6055.498 1.0625.5195l1.8437.1133c.0557 0 .1055.0263.1329.0703.0283.043.0351.1074.0214.1562-.0283.084-.1132.1485-.204.1553l-1.921.1123c-1.041.0488-2.1582.8867-2.5527 1.914l-.1406.3585c-.0283.0713.0215.1416.0986.1416h6.5977c.0771 0 .1474-.0489.169-.126.1122-.4082.1757-.837.1757-1.2803 0-2.6025-2.125-4.727-4.7344-4.727"></path>
             </svg>
-            <p class="ping-rank" id="ping-rank" hidden></p>
-            <p class="stat-note" id="ping-note" aria-live="polite">
-              {`${rounds} quick pings from your browser to the nearest edge. How fast are you?`}
-            </p>
-            <button class="button small" type="button" id="ping-run">Check ping</button>
+            <span class="num">Powered by</span>
+            <p class="powered-name">Cloudflare <em>Workers</em></p>
+            <ul class="powered-stack" aria-label="Cloudflare products Dispatch runs on">
+              <li>Workers</li>
+              <li>D1</li>
+              <li>R2</li>
+            </ul>
           </div>
 
           <div class="cell stat">
@@ -84,6 +81,36 @@ const reasons = [
             <p class="stat-note">Across those servers. Someone in two servers counts twice.</p>
           </div>
         </div>
+
+        <!-- Decorative: data moving between the cards above and below. Columns sit at 1/6, 1/2 and 5/6 of the width. -->
+        <svg class="flow" viewBox="0 0 1000 48" preserveAspectRatio="none" aria-hidden="true">
+          <g class="flow-lines" fill="none">
+            <path d="M166.7 0V48M500 0V48M833.3 0V48" vector-effect="non-scaling-stroke"></path>
+            <path d="M166.7 24H833.3" vector-effect="non-scaling-stroke"></path>
+          </g>
+          <g class="flow-dots">
+            <circle r="2.5">
+              <animateMotion dur="3.6s" begin="0s" repeatCount="indefinite" path="M166.7 0V24H500V48"></animateMotion>
+              <animate attributeName="opacity" dur="3.6s" begin="0s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;0.12;0.88;1"></animate>
+            </circle>
+            <circle r="2.5">
+              <animateMotion dur="3.6s" begin="1.2s" repeatCount="indefinite" path="M500 48V24H833.3V0"></animateMotion>
+              <animate attributeName="opacity" dur="3.6s" begin="1.2s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;0.12;0.88;1"></animate>
+            </circle>
+            <circle r="2.5">
+              <animateMotion dur="3.6s" begin="2.4s" repeatCount="indefinite" path="M833.3 48V24H166.7V0"></animateMotion>
+              <animate attributeName="opacity" dur="3.6s" begin="2.4s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;0.12;0.88;1"></animate>
+            </circle>
+            <circle r="2.5">
+              <animateMotion dur="2.4s" begin="0.6s" repeatCount="indefinite" path="M500 0V48"></animateMotion>
+              <animate attributeName="opacity" dur="2.4s" begin="0.6s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;0.2;0.8;1"></animate>
+            </circle>
+            <circle r="2.5">
+              <animateMotion dur="2.4s" begin="1.8s" repeatCount="indefinite" path="M166.7 48V0"></animateMotion>
+              <animate attributeName="opacity" dur="2.4s" begin="1.8s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;0.2;0.8;1"></animate>
+            </circle>
+          </g>
+        </svg>
 
         <div class="cells three status-grid checks">
           <div class="cell stat">
@@ -137,14 +164,10 @@ const reasons = [
     </section>
   </main>
 
-  <script is:inline define:vars={{ rounds }}>
+  <script is:inline>
     const $ = (id) => document.getElementById(id);
     const set = (id, value) => ($(id).textContent = value);
-
-    // Holds a median. The older key held an average, so it was left behind.
-    const BEST_KEY = 'dispatch-best-ping-median';
     const number = new Intl.NumberFormat('en-US');
-    const run = $('ping-run');
 
     const banner = (state, text, note) => {
       $('banner').dataset.state = state;
@@ -163,114 +186,7 @@ const reasons = [
       $('worker-state').dataset.ok = String(ok);
     };
 
-    // [slower than this many ms stops being the tier, label]
-    const tiers = [
-      [40, 'Lightning'],
-      [90, 'Snappy'],
-      [180, 'Steady'],
-      [Infinity, 'Scenic route'],
-    ];
-
-    // Personal best lives in this browser only; storage can be blocked, so it's optional.
-    const readBest = () => {
-      try {
-        const value = Number(localStorage.getItem(BEST_KEY));
-        return value > 0 ? value : null;
-      } catch {
-        return null;
-      }
-    };
-
-    const saveBest = (ms) => {
-      try {
-        localStorage.setItem(BEST_KEY, String(ms));
-      } catch {}
-    };
-
-    // The vertical axis never covers less than MIN_RANGE_MS, centred on the run, so a
-    // steady connection that moves by a millisecond or two draws a calm line rather
-    // than a dramatic one. A genuinely jumpy connection still fills the graph.
-    const MIN_RANGE_MS = 40;
-
-    function draw(times) {
-      const low = Math.min(...times);
-      const high = Math.max(...times);
-      const range = Math.max(high - low, MIN_RANGE_MS);
-      const middle = (low + high) / 2;
-      const points = times.map((ms, i) => {
-        const x = (i / (rounds - 1)) * 120;
-        const y = 28 - ((ms - middle) / range) * 44;
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      });
-      $('graph-line').setAttribute('points', points.join(' '));
-    }
-
-    // Jitter only ever adds time, so the median describes a connection better than the mean.
-    const median = (values) => {
-      const sorted = [...values].sort((a, b) => a - b);
-      const mid = sorted.length >> 1;
-      return Math.round(sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2);
-    };
-
-    async function ping() {
-      const url = new URL(`/api/ping?t=${Date.now()}`, location.href).href;
-      const started = performance.now();
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) throw new Error(String(res.status));
-      const body = await res.json();
-      const elapsed = performance.now() - started;
-
-      // Resource timing covers just the network (request sent to first byte back), leaving
-      // out the page's own JavaScript. Fall back to the stopwatch where it isn't available.
-      const entry = performance.getEntriesByName(url, 'resource').pop();
-      performance.clearResourceTimings();
-      const network = entry && entry.responseStart > entry.requestStart ? entry.responseStart - entry.requestStart : elapsed;
-      return { ms: Math.max(1, Math.round(network)), colo: body.colo };
-    }
-
-    async function test() {
-      run.disabled = true;
-      run.textContent = 'Pinging…';
-      $('ping-rank').hidden = true;
-      $('graph-line').setAttribute('points', '');
-      set('ping-note', 'Warming up the connection…');
-
-      const times = [];
-      try {
-        // The first request pays for the TLS handshake, so it is thrown away.
-        await ping();
-        let colo = null;
-        for (let i = 0; i < rounds; i++) {
-          const result = await ping();
-          colo = result.colo ?? colo;
-          times.push(result.ms);
-          draw(times);
-          set('ping', String(result.ms));
-        }
-
-        const typical = median(times);
-        const record = readBest();
-        const beat = record === null || typical < record;
-        if (beat) saveBest(typical);
-
-        set('ping', String(typical));
-        set('ping-rank', tiers.find(([limit]) => typical < limit)[1]);
-        $('ping-rank').hidden = false;
-        const verdict = record === null ? 'First run, so that is your record.' : beat ? `New personal best, up from ${record} ms!` : `Your best is ${record} ms.`;
-        set('ping-note', `Median of ${rounds}. Fastest ${Math.min(...times)} ms, slowest ${Math.max(...times)} ms. ${verdict}`);
-        workerState(true);
-        if (colo) set('colo', colo);
-      } catch {
-        set('ping', '—');
-        set('ping-note', 'The test failed. Your connection or the Worker is down.');
-        workerState(false);
-      } finally {
-        run.disabled = false;
-        run.textContent = 'Go again';
-      }
-    }
-
-    // Read once on load; the ping test is the only thing that talks to the Worker after that.
+    // Read once on load; nothing on this page polls.
     async function status() {
       try {
         const res = await fetch('/api/status', { cache: 'no-store' });
@@ -293,7 +209,6 @@ const reasons = [
       }
     }
 
-    run.addEventListener('click', test);
     status();
   </script>
 </Base>

@@ -13,16 +13,6 @@ beforeEach(() => {
   vi.stubGlobal('fetch', w.http.stub);
 });
 
-describe('/api/ping', () => {
-  it('answers without touching the database or Discord', async () => {
-    const res = await w.request('/api/ping');
-    expect(res.status).toBe(200);
-    expect(res.headers.get('cache-control')).toBe('no-store');
-    expect(await res.json()).toMatchObject({ ok: true });
-    expect(w.http.calls).toHaveLength(0);
-  });
-});
-
 describe('/api/status', () => {
   it('counts servers and members, following pagination', async () => {
     w.http.on('GET', /users\/@me\/guilds/, (call) =>

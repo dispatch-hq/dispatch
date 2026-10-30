@@ -2575,23 +2575,95 @@ footer {
   font-size: 14px;
 }
 
-.ping-cell .button {
-  margin-top: 20px;
+/* "Powered by" card. The cloud mark is in the footer wordmark's grey, cropped off the corner. */
+.powered {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden;
 }
 
-/* One point per ping, drawn as each round trip comes back. */
-.graph {
+.powered > * {
+  position: relative;
+}
+
+.powered > .powered-logo {
+  position: absolute;
+  right: -6px;
+  bottom: -34px;
+  width: 190px;
+  height: 190px;
+  color: var(--surface-hover);
+  pointer-events: none;
+  transition: color 0.2s;
+}
+
+/* The tile itself lightens to --surface-hover on hover, so step the mark up with it. */
+.powered:hover .powered-logo {
+  color: var(--border);
+}
+
+.powered .powered-name {
+  margin: 0 0 16px;
+  font: 400 clamp(26px, 2.9vw, 32px) / 1.1 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.powered-name em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--brand);
+}
+
+.powered-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.powered-stack li {
+  font: 500 10px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--brand);
+  background: var(--navy);
+  border: 1px solid var(--navy-line);
+  padding: 3px 7px;
+}
+
+/* Data flowing between the two rows of cards. Lines run from the bottom edge of one row to the top of the next. */
+.status-grid.top {
+  margin-bottom: 0;
+}
+
+.flow {
   display: block;
   width: 100%;
-  height: 88px;
-  margin: 8px 0 20px;
-  color: var(--brand);
+  height: 48px;
 }
 
-.ping-rank {
-  margin: 0 0 8px;
-  font: italic 400 26px / 1.15 var(--font-display);
-  color: var(--brand);
+.flow-lines path {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.flow-dots circle {
+  fill: var(--brand);
+}
+
+@media (max-width: 900px) {
+  /* The cards stack into one column, so there is nothing to connect. */
+  .flow {
+    display: none;
+  }
+
+  .status-grid.top {
+    margin-bottom: 24px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
