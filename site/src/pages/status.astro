@@ -141,7 +141,8 @@ const reasons = [
     const $ = (id) => document.getElementById(id);
     const set = (id, value) => ($(id).textContent = value);
 
-    const BEST_KEY = 'dispatch-best-ping';
+    // Holds a median. The older key held an average, so it was left behind.
+    const BEST_KEY = 'dispatch-best-ping-median';
     const number = new Intl.NumberFormat('en-US');
     const run = $('ping-run');
 
@@ -204,12 +205,27 @@ const reasons = [
       $('graph-line').setAttribute('points', points.join(' '));
     }
 
+    // Jitter only ever adds time, so the median describes a connection better than the mean.
+    const median = (values) => {
+      const sorted = [...values].sort((a, b) => a - b);
+      const mid = sorted.length >> 1;
+      return Math.round(sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2);
+    };
+
     async function ping() {
+      const url = new URL(`/api/ping?t=${Date.now()}`, location.href).href;
       const started = performance.now();
-      const res = await fetch(`/api/ping?t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error(String(res.status));
       const body = await res.json();
-      return { ms: Math.max(1, Math.round(performance.now() - started)), colo: body.colo };
+      const elapsed = performance.now() - started;
+
+      // Resource timing covers just the network (request sent to first byte back), leaving
+      // out the page's own JavaScript. Fall back to the stopwatch where it isn't available.
+      const entry = performance.getEntriesByName(url, 'resource').pop();
+      performance.clearResourceTimings();
+      const network = entry && entry.responseStart > entry.requestStart ? entry.responseStart - entry.requestStart : elapsed;
+      return { ms: Math.max(1, Math.round(network)), colo: body.colo };
     }
 
     async function test() {
@@ -232,16 +248,16 @@ const reasons = [
           set('ping', String(result.ms));
         }
 
-        const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+        const typical = median(times);
         const record = readBest();
-        const beat = record === null || avg < record;
-        if (beat) saveBest(avg);
+        const beat = record === null || typical < record;
+        if (beat) saveBest(typical);
 
-        set('ping', String(avg));
-        set('ping-rank', tiers.find(([limit]) => avg < limit)[1]);
+        set('ping', String(typical));
+        set('ping-rank', tiers.find(([limit]) => typical < limit)[1]);
         $('ping-rank').hidden = false;
         const verdict = record === null ? 'First run, so that is your record.' : beat ? `New personal best, up from ${record} ms!` : `Your best is ${record} ms.`;
-        set('ping-note', `Average of ${rounds}. Fastest ${Math.min(...times)} ms, slowest ${Math.max(...times)} ms. ${verdict}`);
+        set('ping-note', `Median of ${rounds}. Fastest ${Math.min(...times)} ms, slowest ${Math.max(...times)} ms. ${verdict}`);
         workerState(true);
         if (colo) set('colo', colo);
       } catch {
