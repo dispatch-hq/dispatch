@@ -81,6 +81,7 @@ beforeAll(() => {
   let message = 0;
   on('POST', /discord\.com\/api\/v10\/channels\/([\w-]+)\/messages$/, () => ({ id: `msg-${++message}` }));
   on('PATCH', /discord\.com\/api\/v10\/channels\/[\w-]+\/messages\/[\w-]+$/, () => ({}));
+  on('DELETE', /discord\.com\/api\/v10\/channels\/[\w-]+\/messages\/[\w-]+$/, () => new Response(null, { status: 204 }));
   on('POST', /discord\.com\/api\/v10\/channels\/[\w-]+\/messages\/[\w-]+\/threads$/, () => ({ id: 'thread' }));
   on('POST', /discord\.com\/api\/v10\/users\/@me\/channels/, (call) => ({ id: `dm-${call.body.recipient_id}` }));
   on('GET', /discord\.com\/api\/v10\/guilds\/\d+\/members\/(\d+)$/, (_, m) => ({ roles: memberRoles[m[1]!] ?? [] }));
@@ -389,7 +390,7 @@ describe('triage queue', () => {
 
     expect(w.http.find('POST', /repos\/acme\/app\/issues$/)).toHaveLength(before);
     const card = discordCalls('POST', new RegExp(`/channels/${IDS.triage}/messages$`)).at(-1)!;
-    expect(customIds(card.body)).toEqual(['triage-approve;2', 'triage-reject;2']);
+    expect(customIds(card.body)).toEqual(['triage-approve;2', 'triage-reject;2', 'triage-info;2', 'report-vote;2']);
     expect(card.body.allowed_mentions).toEqual({ parse: [], users: [] });
     expect(reportRow(2)).toMatchObject({ status: 'pending', triage_channel_id: IDS.triage, triage_message_id: expect.any(String) });
 
@@ -418,16 +419,16 @@ describe('triage queue', () => {
 
     const updated = followupOf(res.token);
     expect(textOf(updated.body)).toContain('Filed');
-    expect(customIds(updated.body)).toEqual([]); // buttons removed
+    expect(customIds(updated.body)).toEqual(['report-vote;2']); // review buttons removed; it can still be upvoted
 
     expect(discordCalls('POST', /\/channels\/dm-\d+\/messages/).some((c) => textOf(c.body).includes('Report approved'))).toBe(true);
-    expect(discordCalls('POST', new RegExp(`/channels/${IDS.updates}/messages`)).some((c) => textOf(c.body).includes('New bug report'))).toBe(true);
+    expect(discordCalls('POST', new RegExp(`/channels/${IDS.updates}/messages`)).some((c) => textOf(c.body).includes('Reported by') && customIds(c.body).includes('report-vote;2'))).toBe(true);
   });
 
   it('ignores a second approval of the same report', async () => {
     const before = w.http.find('POST', /repos\/acme\/app\/issues$/).length;
     const res = await w.interact({ type: 3, ...w.base(IDS.admin, true), data: { custom_id: 'triage-approve;2', component_type: 2 } });
-    expect(res.json.type).toBe(7);
+    expect(res.json.type).toBe(6);
     expect(w.http.find('POST', /repos\/acme\/app\/issues$/)).toHaveLength(before);
   });
 
@@ -443,12 +444,17 @@ describe('triage queue', () => {
       ...w.base(IDS.admin, true),
       data: { custom_id: 'triage-reject;3', components: [{ type: 18, component: { type: 4, custom_id: 'reason', value: 'Feature request — see #ideas' } }] },
     });
-    expect(res.json.type).toBe(7);
-    expect(textOf(res.json)).toContain('Rejected');
+    expect(res.json.type).toBe(5); // deferred, privately
+    expect(res.json.data.flags & EPHEMERAL).toBeTruthy();
+    expect(textOf(followupOf(res.token).body)).toContain('Rejected report #3');
     expect(reportRow(3)).toMatchObject({ status: 'rejected', review_note: 'Feature request — see #ideas' });
 
     const dm = discordCalls('POST', /\/channels\/dm-\d+\/messages/).at(-1)!;
     expect(textOf(dm.body)).toContain('Feature request — see #ideas');
+
+    // The card itself is edited in place.
+    const edit = discordCalls('PATCH', new RegExp(`/channels/${IDS.triage}/messages/${reportRow(3).triage_message_id}$`)).at(-1)!;
+    expect(textOf(edit.body)).toContain('Rejected');
   });
 });
 
@@ -506,13 +512,16 @@ describe('rewards and GitHub webhooks', () => {
 
   it('shows progress in /stats and /leaderboard', async () => {
     const stats = await w.interact({ type: 2, ...w.base(IDS.member), data: { id: 'c', name: 'stats', type: 1 } });
-    expect(textOf(stats.json)).toContain('**1** fixed · **2** filed');
-    expect(textOf(stats.json)).toContain(`<@&${IDS.role}>`);
+    expect(stats.json.type).toBe(5);
+    const statsBody = followupOf(stats.token).body;
+    expect(textOf(statsBody)).toContain('**1** fixed · **2** filed');
+    expect(textOf(statsBody)).toContain(`<@&${IDS.role}>`);
 
     const board = await w.interact({ type: 2, ...w.base(IDS.member), data: { id: 'c', name: 'leaderboard', type: 1 } });
     expect(board.json.data.flags & EPHEMERAL).toBeFalsy();
-    expect(textOf(board.json)).toContain(`<@${IDS.member}> — **1** fixed`);
-    expect(board.json.data.allowed_mentions.parse).toEqual([]);
+    const boardBody = followupOf(board.token).body;
+    expect(textOf(boardBody)).toContain(`<@${IDS.member}> — **1** fixed`);
+    expect(boardBody.allowed_mentions.parse).toEqual([]);
   });
 
   it('keeps /stats public', async () => {

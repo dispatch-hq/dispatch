@@ -24,6 +24,11 @@ export function inGuild(interaction: GuildInteraction) {
     : null;
 }
 
+/** Who clicked: `member` in servers, `user` in DMs and user-installed contexts. */
+export function viewerId(interaction: { member?: { user: { id: string } }; user?: { id: string } }) {
+  return interaction.member?.user.id ?? interaction.user?.id ?? null;
+}
+
 export function reply(c: Responder, message: string): Response {
   return c.flags(...EPHEMERAL_V2).res(view([notice(message)]));
 }
@@ -43,6 +48,7 @@ export const messages = {
     "This server hasn't connected a repository yet. An admin can set one up with `/dispatch setup`.",
   adminOnly: 'You need the **Manage Server** permission to do that.',
   staffOnly: 'Only staff (Manage Server, or the configured staff role) can review reports.',
+  muted: "You can't file reports or vote on this server right now.",
   failed: 'Something went wrong on our side. Please try again in a moment.',
 } as const;
 

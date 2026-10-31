@@ -92,6 +92,34 @@ export async function verifyToken<T extends object>(
   }
 }
 
+/**
+ * Like `signToken`, but with no expiry, so the same payload always gives the
+ * same token. For URLs that live as long as the message they're in. The prefix
+ * keeps these and `signToken` tokens from being accepted in place of each other.
+ */
+export async function signStable(secret: string, payload: object): Promise<string> {
+  const body = base64UrlEncode(JSON.stringify(payload));
+  const sig = await crypto.subtle.sign('HMAC', await hmacKey(secret), encoder.encode(`stable:${body}`));
+  return `${body}.${base64UrlEncode(sig)}`;
+}
+
+export async function verifyStable<T extends object>(secret: string, token: string): Promise<T | null> {
+  const [body, sig] = token.split('.');
+  if (!body || !sig) return null;
+
+  try {
+    const valid = await crypto.subtle.verify(
+      'HMAC',
+      await hmacKey(secret),
+      base64UrlDecode(sig),
+      encoder.encode(`stable:${body}`)
+    );
+    return valid ? (JSON.parse(decoder.decode(base64UrlDecode(body))) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                              GitHub webhooks                               */
 /* -------------------------------------------------------------------------- */

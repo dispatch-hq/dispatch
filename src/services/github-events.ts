@@ -10,7 +10,7 @@ import { escapeMarkdown, truncate } from '../lib/format';
 import { card, divider, row, text } from '../lib/ui';
 import type { Bindings, ReportRow, ReportStatus } from '../types';
 import { sendDirectMessage } from './discord';
-import { announce, issueRef } from './reports';
+import { announce, issueRef, refreshReportMessages } from './reports';
 import { announceRewards, syncRewards } from './rewards';
 
 /** Only the fields Dispatch reads from GitHub webhook payloads. */
@@ -93,6 +93,7 @@ async function onIssue(env: Bindings, event: IssuesEvent) {
     const guild = await getGuild(env.DB, report.guild_id);
 
     await announce(env, guild, updated, status === 'open' ? 'reopened' : status === 'fixed' ? 'fixed' : 'closed');
+    await refreshReportMessages(env, report.id);
 
     // Credit changes whenever a report enters or leaves `fixed`.
     if (status === 'fixed' || report.status === 'fixed') {

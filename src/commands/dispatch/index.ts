@@ -2,11 +2,13 @@ import { makeSlashCommand } from 'discord-hono';
 import { factory } from '../../init';
 import { MANAGE_GUILD_PERMISSION } from '../../lib/permissions';
 import { sub_disconnect } from './disconnect';
+import { group_replies } from './replies';
+import { group_reporters } from './reporters';
 import { group_rewards } from './rewards';
 import { sub_settings } from './settings';
 import { sub_setup } from './setup';
 
-const subs = [sub_setup, sub_settings, sub_disconnect, group_rewards];
+const subs = [sub_setup, sub_settings, sub_disconnect, group_rewards, group_replies, group_reporters];
 
 export const command_dispatch = factory.command(
   makeSlashCommand('dispatch', 'Configure Dispatch for this server')
@@ -22,6 +24,7 @@ export {
   button_settings_dm,
   button_settings_edit,
   modal_settings_edit,
+  select_settings_board,
   select_settings_staff,
   select_settings_triage,
   select_settings_updates,

@@ -45,6 +45,12 @@ The goal of the MVP is to make the core workflow reliable:
 | See your open reports from anywhere   | ✅      | `/issues` with paging. Works in DMs and via user install |
 | Report status synchronisation         | ✅      | Closed / reopened via webhooks |
 | Update Discord when an issue is fixed | ✅      | Reporter DM + optional updates channel |
+| Upvotes on reports                    | ✅      | Triage cards and updates-channel posts; toggled per member |
+| Saved replies for triage              | ✅      | `/dispatch replies`, offered on *Reject* and *Request info* |
+| Ask the reporter for more information | ✅      | *Request info* DMs a question; the answer joins the report |
+| Reporter reputation                   | ✅      | Acceptance rate on cards and `/stats`; optional fast-track; `/dispatch reporters mute` |
+| Live status board                     | ✅      | One self-updating message per server |
+| Generated message images              | ✅      | Reports, stats, leaderboard, rewards, board. Latin text only; other scripts stay in the message text |
 
 ---
 
@@ -93,6 +99,7 @@ The core talks to code hosts only through `IssueProvider` (`src/providers/types.
 | Repository management |   `100%` |
 | Bug report submission |   `100%` |
 | Report review         |   `100%` |
+| Community & reputation |  `100%` |
 | Issue management      |    `50%` |
 | User rewards          |   `100%` |
 | Administration        |    `75%` |

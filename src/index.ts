@@ -1,4 +1,5 @@
 import { Hono, type Handler } from 'hono';
+import { verifyCard } from './cards';
 import * as handlers from './commands';
 import { factory } from './init';
 import type { AppEnv } from './types';
@@ -48,6 +49,33 @@ app.get('/files/:key{reports/.+}', async (c) => {
   headers.set('x-content-type-options', 'nosniff');
   headers.set('content-security-policy', "default-src 'none'; img-src 'self'; media-src 'self'; sandbox");
   return new Response(object.body, { headers });
+});
+
+// Message images (see cards/index.ts). The URL is the data, so a response never
+// goes stale and can be cached for good.
+app.get('/cards/:file{.+\\.png}', async (c) => {
+  const data = await verifyCard(c.env, c.req.param('file').slice(0, -'.png'.length));
+  if (!data) return c.notFound();
+
+  const cache = (caches as unknown as { default: Cache }).default;
+  // Keyed without the query string, so adding one can't force a fresh render.
+  const url = new URL(c.req.url);
+  url.search = '';
+  const key = url.toString();
+  const cached = await cache.match(key);
+  if (cached) return cached;
+
+  // Loaded here so the renderer's WebAssembly only starts up in isolates that draw.
+  const { renderCardPng } = await import('./cards/runtime');
+  const response = new Response(await renderCardPng(data), {
+    headers: {
+      'content-type': 'image/png',
+      'cache-control': 'public, max-age=31536000, immutable',
+      'x-content-type-options': 'nosniff',
+    },
+  });
+  c.executionCtx.waitUntil(cache.put(key, response.clone()));
+  return response;
 });
 
 export default app;

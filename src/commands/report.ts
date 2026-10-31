@@ -9,13 +9,13 @@ import {
   makeTextInput,
   textInputStyle,
 } from 'discord-hono';
-import { createDraft, getDraft, getGuild, getGuildRepos, secondsSinceLastReport } from '../db';
+import { createDraft, getDraft, getGuild, getGuildRepos, isMuted, secondsSinceLastReport } from '../db';
 import { clean, messageUrl, parseReportTypes, truncate } from '../lib/format';
 import { card, EPHEMERAL_V2, notice, row, text, view } from '../lib/ui';
 import { factory } from '../init';
 import { rehostAttachments } from '../services/attachments';
 import { activeRepos, hasPremium } from '../services/premium';
-import { receiptCard, submitReport } from '../services/reports';
+import { receiptCard, reportPicture, submitReport } from '../services/reports';
 import type { Bindings, GuildRepo, GuildRow } from '../types';
 import { deny, guarded, inGuild, messages } from './shared';
 
@@ -119,6 +119,7 @@ async function canReport(
 ): Promise<Check> {
   const [guild, linked] = await Promise.all([getGuild(env.DB, guildId), getGuildRepos(env.DB, guildId)]);
   if (!guild || !linked.length) return { error: messages.notLinked };
+  if (await isMuted(env.DB, guildId, userId)) return { error: messages.muted };
 
   const age = await secondsSinceLastReport(env.DB, guildId, userId);
   if (age !== null && age < guild.cooldown_seconds) {
@@ -339,8 +340,9 @@ export const modal_report = factory.modal(reportModal(), (c) =>
       if (outcome.kind === 'failed') {
         return c.followup(view([notice(`### Couldn't file your report\n${outcome.error}`)]));
       }
+      const picture = await reportPicture(c.env, check.guild, outcome.report);
       return c.followup(
-        view([receiptCard(outcome.report, outcome.kind, outcome.kind === 'published' ? outcome.issue : null, skipped)])
+        view([receiptCard(outcome.report, outcome.kind, outcome.kind === 'published' ? outcome.issue : null, skipped, picture)])
       );
     })
   )

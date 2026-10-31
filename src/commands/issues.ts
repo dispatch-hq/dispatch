@@ -5,13 +5,9 @@ import { card, divider, EPHEMERAL_V2, row, section, text, view } from '../lib/ui
 import { factory } from '../init';
 import { issueRef } from '../services/reports';
 import type { ReportRow } from '../types';
+import { viewerId } from './shared';
 
 const PAGE_SIZE = 5;
-
-/** Slash commands and buttons arrive with `member` in servers and `user` everywhere else. */
-function viewerId(interaction: { member?: { user: { id: string } }; user?: { id: string } }) {
-  return interaction.member?.user.id ?? interaction.user?.id ?? null;
-}
 
 /** D1 stores UTC as `YYYY-MM-DD HH:MM:SS`. */
 function unix(timestamp: string) {
