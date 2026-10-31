@@ -1097,11 +1097,24 @@ h2 em {
   font-size: 11px;
 }
 
+/* Sized in em so the badge keeps Discord's proportions to the username at every size. */
 .d-app {
-  padding: 1px 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22em;
+  height: 1.25em;
+  padding: 0 0.34em 0 0.28em;
   background: #5865f2;
   color: #fff;
-  font: 600 10px/1.5 var(--font-body);
+  font: 700 0.8em/1.25em var(--font-body);
+  letter-spacing: 0.02em;
+  border-radius: 3px !important;
+}
+
+.d-app svg {
+  flex-shrink: 0;
+  width: 1em;
+  height: 0.75em;
 }
 
 .d-select {
