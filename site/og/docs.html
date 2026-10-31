@@ -1,9 +1,11 @@
 <!doctype html>
 <!--
   Source for site/public/og-docs.png (the social preview for /docs/).
-  Re-render after editing, from the repo root, with any Chromium:
+  The background is the home hero's halo shader, drawn once by halo.js.
+  Re-render after editing, from the repo root, with any Chromium that has WebGL:
 
     chrome --headless --hide-scrollbars --window-size=1200,630 \
+      --use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader \
       --screenshot=site/public/og-docs.png file:///ABSOLUTE/PATH/TO/site/og/docs.html
 
   Fonts load from node_modules, so run `npm install` first.
@@ -29,11 +31,6 @@
         src: url('../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2') format('woff2');
         font-weight: 100 1000;
       }
-      @font-face {
-        font-family: 'IBM Plex Mono';
-        src: url('../../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2') format('woff2');
-        font-weight: 500;
-      }
 
       * {
         box-sizing: border-box;
@@ -46,53 +43,52 @@
         height: 630px;
         overflow: hidden;
         position: relative;
-        background:
-          radial-gradient(640px 360px at 88% 0%, rgba(38, 46, 99, 0.75), transparent 70%),
-          #151618;
+        background: #151618;
         color: #eeeef2;
         font-family: 'DM Sans', sans-serif;
       }
 
-      /* Blueprint grid, fading downwards. */
-      body::before {
-        content: '';
+      canvas {
         position: absolute;
         inset: 0;
-        background-image:
-          linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-        background-size: 60px 60px;
-        mask-image: linear-gradient(to bottom, #000 25%, transparent 95%);
+        width: 1200px;
+        height: 630px;
       }
 
       .brand {
         position: absolute;
         top: 48px;
-        left: 72px;
+        left: 0;
+        right: 0;
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 14px;
-        font: 500 44px 'Fraunces', serif;
+        font: 500 40px 'Fraunces', serif;
         letter-spacing: -0.01em;
       }
 
       .brand img {
-        width: 40px;
-        height: 44px;
+        width: 36px;
+        height: 40px;
       }
 
       .brand .section {
-        color: #8b8d97;
-        font-weight: 400;
+        color: #a4a7b3;
+        font: 500 28px 'DM Sans', sans-serif;
+        letter-spacing: -0.005em;
       }
 
       h1 {
         position: absolute;
-        left: 72px;
-        top: 176px;
-        width: 1056px;
-        font: 400 112px/0.98 'Fraunces', serif;
-        letter-spacing: -0.035em;
+        left: 0;
+        right: 0;
+        top: 50%;
+        transform: translateY(-46%);
+        text-align: center;
+        font: 400 112px/1 'Fraunces', serif;
+        letter-spacing: -0.03em;
+        text-wrap: balance;
       }
 
       h1 em {
@@ -100,12 +96,12 @@
         font-weight: 300;
         color: #8497fa;
       }
-
     </style>
   </head>
   <body>
+    <canvas id="halo" width="1200" height="630" data-t="63"></canvas>
     <div class="brand"><img src="../public/logo.svg" alt="" />Dispatch<span class="section">/ Docs</span></div>
     <h1>Using Dispatch,<br /><em>step by step.</em></h1>
-
+    <script src="halo.js"></script>
   </body>
 </html>
