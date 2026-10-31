@@ -2563,32 +2563,26 @@ footer {
 
 /* 404 --------------------------------------------------------------------- */
 
-.not-found {
-  min-height: calc(100vh - 64px - 1px);
+/* 404: the same page header as the other pages, centred in the first screen. */
+.nf {
+  display: flex;
+  flex-direction: column;
   min-height: calc(100svh - 65px);
 }
 
-.nf-mock {
-  max-width: 440px;
-  justify-self: end;
-  width: 100%;
-  animation: rise 0.8s var(--ease) 0.3s both;
+.nf .hero-bg {
+  flex: 1;
+  display: flex;
+  align-items: center;
 }
 
-@media (max-width: 900px) {
-  .not-found {
-    min-height: 0;
-  }
-  .nf-mock {
-    justify-self: stretch;
-    max-width: none;
-  }
+.nf .page-head {
+  padding-top: 64px;
+  padding-bottom: 64px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .nf-mock {
-    animation: none;
-  }
+.nf .page-head .lede {
+  margin-bottom: 32px;
 }
 
 /* Status ------------------------------------------------------------------ */
@@ -2951,6 +2945,26 @@ footer {
 .hero-bg.gl .haze,
 .hero-bg.gl::before {
   display: none;
+}
+
+/* Phones: the inner-page heroes sit quieter, with less grain and a dimmer haze behind the copy. */
+@media (max-width: 760px) {
+  .hero-bg:not(.breathe)::before {
+    opacity: 0.45;
+  }
+
+  .hero-bg:not(.breathe)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(21, 22, 24, 0.4);
+    pointer-events: none;
+  }
+
+  .hero-bg:not(.breathe) > .wrap {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 /* Navigation and buttons share one face: body sans, sentence case. Easier to read than tracked mono caps. */

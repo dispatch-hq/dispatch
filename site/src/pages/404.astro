@@ -8,35 +8,22 @@ import Base from '../layouts/Base.astro';
   path="/404/"
   noindex
 >
-  <main>
+  <main class="nf">
     <div class="hero-bg">
-      <div class="wrap hero not-found">
-        <div class="hero-copy">
-          <span class="tag">Error 404</span>
-          <h1>Page not <em>found.</em></h1>
-          <p class="lede">That link doesn't lead anywhere. It may have moved, or the address was mistyped.</p>
-          <div class="cta">
-            <a class="button large" href="/">Back to home <svg class="arrow" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18" /><path d="M15.5 6.5 21 12l-5.5 5.5" /></svg></a>
-            <a class="button large ghost" href="/docs/">Read the docs</a>
-          </div>
-          <p class="assure">
-            Still stuck? <a href="https://github.com/dispatch-hq/dispatch/issues" target="_blank" rel="noopener noreferrer">Report a problem ↗</a>
-          </p>
+      <div class="wrap page-head">
+        <span class="index">Error</span>
+        <h1>Page not <em>found.</em></h1>
+        <p class="lede">
+          That link doesn't lead anywhere. It may have moved, or the address was mistyped. Head back to the homepage, or
+          check the docs to see what Dispatch can do.
+        </p>
+        <div class="cta">
+          <a class="button large" href="/">Back to home <svg class="arrow" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18" /><path d="M15.5 6.5 21 12l-5.5 5.5" /></svg></a>
+          <a class="button large ghost" href="/docs/">Read the docs</a>
         </div>
-
-        <div class="discord nf-mock" aria-hidden="true">
-          <p class="cmd"><b>you</b> used <b>/report</b></p>
-          <div class="d-card">
-            <div class="d-row">
-              <div>
-                <h4>Page not found</h4>
-                <small>No issue was filed for this one.</small>
-              </div>
-              <span class="d-btn primary">404</span>
-            </div>
-            <p class="d-note">The requested path doesn't exist on this site.</p>
-          </div>
-        </div>
+        <p class="assure">
+          Still stuck? <a href="https://github.com/dispatch-hq/dispatch/issues" target="_blank" rel="noopener noreferrer">Report a problem ↗</a>
+        </p>
       </div>
     </div>
   </main>
