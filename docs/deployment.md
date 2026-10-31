@@ -89,6 +89,14 @@ npm run prod:register   # reads DISCORD_APPLICATION_ID / DISCORD_TOKEN from .env
 
 Re-run `prod:register` whenever command definitions change. While developing, set `DISCORD_GUILD_ID` in `.dev.vars` and run `npm run beta:register` to register to one server instantly.
 
+## Message images
+
+The images on Dispatch's messages are drawn by the Worker at `/cards/*`, and are built to fit the Workers **Free** plan's 10 ms of CPU per request. Rasterising a card from scratch takes far longer than that, so the logo and every character are drawn ahead of time into `src/cards/assets.bin`. A request stamps the text onto a flat background and wraps it as a PNG, which takes a few milliseconds. Each image is drawn once and then cached. If drawing fails, the image shows as broken but the rest of the message and the bot are unaffected. To see real CPU use, check the Worker's CPU time for `/cards/*` in its Cloudflare metrics or logs.
+
+Image URLs are signed with `STATE_SECRET`. Changing that secret breaks the images on existing messages until each is next edited.
+
+To work on the layouts in `src/cards/render.ts`, run `npx tsx scripts/preview-cards.ts <output directory>` to draw samples and time them. New text sizes or colours (`src/cards/spec.ts`, `scripts/build-card-assets.mjs`) need `node scripts/build-card-assets.mjs` to regenerate the assets.
+
 ## Local development
 
 ```sh

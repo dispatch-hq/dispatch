@@ -1,5 +1,6 @@
 import type {
   Attachment,
+  CannedReply,
   GuildRepo,
   GuildRow,
   Provider,
@@ -123,6 +124,10 @@ export type GuildSettings = Partial<
     | 'labels'
     | 'report_types'
     | 'cooldown_seconds'
+    | 'trust_min_reports'
+    | 'board_channel_id'
+    | 'board_message_id'
+    | 'board_version'
   >
 >;
 
@@ -295,7 +300,7 @@ export async function claimPendingReport(
 ) {
   const result = await db
     .prepare(
-      `UPDATE reports SET status = ?, reviewed_by = ?, review_note = ?, updated_at = CURRENT_TIMESTAMP
+      `UPDATE reports SET status = ?, reviewed_by = ?, review_note = ?, info_request = NULL, info_requested_by = NULL, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND status = 'pending'`
     )
     .bind(status, reviewer, note, id)
@@ -339,6 +344,7 @@ export type ReporterStats = {
   open: number;
   fixed: number;
   rejected: number;
+  closed: number;
 };
 
 export async function getReporterStats(db: D1Database, guildId: string, reporterId: string) {
@@ -348,12 +354,13 @@ export async function getReporterStats(db: D1Database, guildId: string, reporter
          COALESCE(SUM(status = 'pending'), 0) AS pending,
          COALESCE(SUM(status = 'open'), 0) AS open,
          COALESCE(SUM(status = 'fixed'), 0) AS fixed,
-         COALESCE(SUM(status = 'rejected'), 0) AS rejected
+         COALESCE(SUM(status = 'rejected'), 0) AS rejected,
+         COALESCE(SUM(status = 'closed'), 0) AS closed
        FROM reports WHERE guild_id = ? AND reporter_id = ?`
     )
     .bind(guildId, reporterId)
     .first<ReporterStats>();
-  return row ?? { total: 0, pending: 0, open: 0, fixed: 0, rejected: 0 };
+  return row ?? { total: 0, pending: 0, open: 0, fixed: 0, rejected: 0, closed: 0 };
 }
 
 export function getRecentReports(db: D1Database, guildId: string, reporterId: string, limit = 5) {
@@ -387,12 +394,12 @@ export async function getActiveIssues(db: D1Database, reporterId: string, limit:
 export function getLeaderboard(db: D1Database, guildId: string, limit = 10) {
   return db
     .prepare(
-      `SELECT reporter_id, COUNT(*) AS fixed FROM reports
+      `SELECT reporter_id, MAX(reporter_name) AS reporter_name, COUNT(*) AS fixed FROM reports
        WHERE guild_id = ? AND status = 'fixed'
        GROUP BY reporter_id ORDER BY fixed DESC, MIN(updated_at) ASC LIMIT ?`
     )
     .bind(guildId, limit)
-    .all<{ reporter_id: string; fixed: number }>()
+    .all<{ reporter_id: string; reporter_name: string; fixed: number }>()
     .then((r) => r.results);
 }
 
@@ -406,6 +413,164 @@ export function getQualifiedReporters(db: D1Database, guildId: string, threshold
     .bind(guildId, threshold, limit)
     .all<{ reporter_id: string }>()
     .then((r) => r.results.map((row) => row.reporter_id));
+}
+
+export function setAnnounceMessage(db: D1Database, id: number, channelId: string, messageId: string) {
+  return db
+    .prepare(`UPDATE reports SET announce_channel_id = ?, announce_message_id = ? WHERE id = ?`)
+    .bind(channelId, messageId, id)
+    .run();
+}
+
+/** The name a member last reported under, for images (which can't draw mentions). */
+export async function getReporterName(db: D1Database, guildId: string, reporterId: string) {
+  const row = await db
+    .prepare(`SELECT reporter_name FROM reports WHERE guild_id = ? AND reporter_id = ? ORDER BY id DESC LIMIT 1`)
+    .bind(guildId, reporterId)
+    .first<{ reporter_name: string }>();
+  return row?.reporter_name ?? null;
+}
+
+/* Asking the reporter for more information. */
+
+export function setInfoRequest(db: D1Database, id: number, question: string, askedBy: string) {
+  return db
+    .prepare(`UPDATE reports SET info_request = ?, info_requested_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending'`)
+    .bind(question, askedBy, id)
+    .run();
+}
+
+/** Adds the reporter's answer to the report, so it reaches the issue when approved. */
+export async function answerInfoRequest(db: D1Database, id: number, answer: string) {
+  const result = await db
+    .prepare(
+      `UPDATE reports SET description = description || ?, info_request = NULL, info_requested_by = NULL, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND status = 'pending' AND info_request IS NOT NULL`
+    )
+    .bind(`\n\n**Added by the reporter**\n${answer}`, id)
+    .run();
+  return result.meta.changes > 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   Votes                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Adds the member's upvote, or takes it back if they already gave one. The count
+ * on the report is always recomputed, so concurrent clicks can't make it drift.
+ */
+export async function toggleVote(db: D1Database, reportId: number, userId: string) {
+  const removed = await db.prepare(`DELETE FROM report_votes WHERE report_id = ? AND user_id = ?`).bind(reportId, userId).run();
+  const voted = removed.meta.changes === 0;
+  if (voted) {
+    await db.prepare(`INSERT OR IGNORE INTO report_votes (report_id, user_id) VALUES (?, ?)`).bind(reportId, userId).run();
+  }
+  const row = await db
+    .prepare(
+      `UPDATE reports SET votes = (SELECT COUNT(*) FROM report_votes WHERE report_id = ?1)
+       WHERE id = ?1 RETURNING votes`
+    )
+    .bind(reportId)
+    .first<{ votes: number }>();
+  return { voted, votes: row?.votes ?? 0 };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                Status board                                */
+/* -------------------------------------------------------------------------- */
+
+export type BoardStats = { open: number; pending: number; fixed: number; week: number };
+
+export async function getBoardStats(db: D1Database, guildId: string) {
+  const [counts, top] = await Promise.all([
+    db
+      .prepare(
+        `SELECT COALESCE(SUM(status = 'open'), 0) AS open,
+           COALESCE(SUM(status = 'pending'), 0) AS pending,
+           COALESCE(SUM(status = 'fixed'), 0) AS fixed,
+           COALESCE(SUM(status = 'fixed' AND updated_at >= datetime('now', '-7 days')), 0) AS week
+         FROM reports WHERE guild_id = ?`
+      )
+      .bind(guildId)
+      .first<BoardStats>(),
+    db
+      .prepare(
+        `SELECT * FROM reports WHERE guild_id = ? AND status IN ('open', 'pending') AND votes > 0
+         ORDER BY votes DESC, id ASC LIMIT 3`
+      )
+      .bind(guildId)
+      .all<ReportRow>(),
+  ]);
+  return { counts: counts ?? { open: 0, pending: 0, fixed: 0, week: 0 }, top: top.results };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Canned replies                               */
+/* -------------------------------------------------------------------------- */
+
+/** One short of a select menu's 25 options: the picker also offers "write my own". */
+export const MAX_CANNED_REPLIES = 24;
+
+export function getCannedReplies(db: D1Database, guildId: string) {
+  return db
+    .prepare(`SELECT * FROM canned_replies WHERE guild_id = ? ORDER BY label COLLATE NOCASE ASC`)
+    .bind(guildId)
+    .all<CannedReply>()
+    .then((r) => r.results);
+}
+
+export function getCannedReply(db: D1Database, guildId: string, id: number) {
+  return db.prepare(`SELECT * FROM canned_replies WHERE guild_id = ? AND id = ?`).bind(guildId, id).first<CannedReply>();
+}
+
+/** Saves a reply, replacing one with the same name. Returns false at the limit. */
+export async function upsertCannedReply(db: D1Database, guildId: string, label: string, body: string) {
+  const result = await db
+    .prepare(
+      `INSERT INTO canned_replies (guild_id, label, body)
+       SELECT ?1, ?2, ?3
+       WHERE (SELECT COUNT(*) FROM canned_replies WHERE guild_id = ?1) < ?4
+          OR EXISTS (SELECT 1 FROM canned_replies WHERE guild_id = ?1 AND label = ?2)
+       ON CONFLICT (guild_id, label) DO UPDATE SET body = excluded.body`
+    )
+    .bind(guildId, label, body, MAX_CANNED_REPLIES)
+    .run();
+  return result.meta.changes > 0;
+}
+
+export async function deleteCannedReply(db: D1Database, guildId: string, label: string) {
+  const result = await db.prepare(`DELETE FROM canned_replies WHERE guild_id = ? AND label = ?`).bind(guildId, label).run();
+  return result.meta.changes > 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Muted reporters                              */
+/* -------------------------------------------------------------------------- */
+
+export async function isMuted(db: D1Database, guildId: string, userId: string) {
+  const row = await db.prepare(`SELECT 1 AS muted FROM muted_reporters WHERE guild_id = ? AND user_id = ?`).bind(guildId, userId).first();
+  return row !== null;
+}
+
+export function muteReporter(db: D1Database, guildId: string, userId: string, mutedBy: string) {
+  return db
+    .prepare(`INSERT OR REPLACE INTO muted_reporters (guild_id, user_id, muted_by) VALUES (?, ?, ?)`)
+    .bind(guildId, userId, mutedBy)
+    .run();
+}
+
+export async function unmuteReporter(db: D1Database, guildId: string, userId: string) {
+  const result = await db.prepare(`DELETE FROM muted_reporters WHERE guild_id = ? AND user_id = ?`).bind(guildId, userId).run();
+  return result.meta.changes > 0;
+}
+
+export function getMutedReporters(db: D1Database, guildId: string, limit = 50) {
+  return db
+    .prepare(`SELECT user_id FROM muted_reporters WHERE guild_id = ? ORDER BY created_at DESC LIMIT ?`)
+    .bind(guildId, limit)
+    .all<{ user_id: string }>()
+    .then((r) => r.results.map((row) => row.user_id));
 }
 
 /* -------------------------------------------------------------------------- */

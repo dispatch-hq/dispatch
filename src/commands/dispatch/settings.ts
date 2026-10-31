@@ -15,23 +15,26 @@ import { escapeMarkdown, MAX_REPORT_TYPES, parseLabels, parseReportTypes } from 
 import { canManageGuild } from '../../lib/permissions';
 import { card, divider, EPHEMERAL_V2, notice, row, section, text, view } from '../../lib/ui';
 import { factory } from '../../init';
-import { sendChannelMessage } from '../../services/discord';
+import { boardCard } from '../../services/board';
+import { deleteChannelMessage, sendChannelMessage } from '../../services/discord';
 import { hasPremium } from '../../services/premium';
 import type { Bindings, GuildRepo, GuildRow } from '../../types';
-import { deny, inGuild, messages } from '../shared';
+import { TRUST_MIN_RATE } from '../../services/reputation';
+import { deny, guarded, inGuild, messages } from '../shared';
 import { repoLines } from './setup';
 
 const TEXT_CHANNELS = [channelType.GUILD_TEXT, channelType.GUILD_ANNOUNCEMENT];
 
-const DEFAULTS: Pick<GuildRow, 'dm_reporters' | 'labels' | 'report_types' | 'cooldown_seconds'> = {
+const DEFAULTS: Pick<GuildRow, 'dm_reporters' | 'labels' | 'report_types' | 'cooldown_seconds' | 'trust_min_reports'> = {
   dm_reporters: 1,
   labels: 'bug',
   report_types: '', // no picker: members go straight to the form
   cooldown_seconds: 60,
+  trust_min_reports: 0, // everyone goes through triage
 };
 
 function channelSelect(
-  id: 'settings-triage' | 'settings-updates',
+  id: 'settings-triage' | 'settings-updates' | 'settings-board',
   current: string | null,
   placeholder: string,
   render: string
@@ -72,6 +75,8 @@ function settingsPanel(env: Bindings, guild: GuildRow | null, repos: GuildRepo[]
     row(channelSelect('settings-triage', settings.triage_channel_id ?? null, 'Off — file issues immediately', render)),
     text('### Updates channel\nNew issues, fixes and reward roles are announced here.'),
     row(channelSelect('settings-updates', settings.updates_channel_id ?? null, 'Off — no announcements', render)),
+    text('### Status board\nOne message that always shows open, in-review and fixed counts, and the most upvoted reports.'),
+    row(channelSelect('settings-board', settings.board_channel_id ?? null, 'Off — no status board', render)),
     text('### Staff role\nCan approve or reject reports. Members with **Manage Server** always can.'),
     row(
       settings.staff_role_id
@@ -84,11 +89,12 @@ function settingsPanel(env: Bindings, guild: GuildRow | null, repos: GuildRepo[]
         `**Labels on every issue** ${labels.length ? labels.map((l) => `\`${escapeMarkdown(l)}\``).join(' ') : '*none*'}`,
         `**Report types** ${types.length ? types.map((t) => `\`${escapeMarkdown(t)}\``).join(' ') : '*none*, members go straight to the form'}`,
         `**Cooldown** ${settings.cooldown_seconds}s between reports per member`,
+        `**Fast-track** ${settings.trust_min_reports ? `Members with ${settings.trust_min_reports}+ accepted reports and at least ${TRUST_MIN_RATE}% accepted skip triage` : 'Off, every report goes through triage'}`,
         `**Reporter DMs** ${settings.dm_reporters ? 'On — reporters hear about approvals, fixes and maintainer comments' : 'Off'}`,
       ].join('\n')
     ),
     row(
-      makeButton('settings-edit', 'Edit labels, types & cooldown', buttonStyle.Primary),
+      makeButton('settings-edit', 'Edit labels, types & limits', buttonStyle.Primary),
       makeButton(
         'settings-dm',
         settings.dm_reporters ? 'Turn off reporter DMs' : 'Turn on reporter DMs',
@@ -124,6 +130,10 @@ function settingsModal(guild: GuildRow | null) {
       'Cooldown (seconds)',
       makeTextInput('cooldown').value(String(settings.cooldown_seconds)).min_length(1).max_length(4).required(true)
     ).description('Minimum time between reports from the same member. 0 – 3600.'),
+    makeLabel(
+      'Fast-track after (accepted reports)',
+      makeTextInput('trust').value(String(settings.trust_min_reports)).min_length(1).max_length(4).required(true)
+    ).description(`Skip triage once this many are accepted, at ${TRUST_MIN_RATE}% or better. 0 turns it off.`),
   ]);
 }
 
@@ -193,6 +203,42 @@ export const select_settings_updates = factory.component(
   channelHandler('updates_channel_id', 'updates channel')
 );
 
+/** Moves the status board: the old message goes, and a current one is posted in the new channel. */
+export const select_settings_board = factory.component(makeChannelSelect('settings-board'), (c) => {
+  const ctx = inGuild(c.interaction);
+  if (!ctx) return deny(c, messages.guildOnly);
+  if (!canManageGuild(ctx.member)) return deny(c, messages.adminOnly);
+
+  return c
+    .flags(...EPHEMERAL_V2)
+    .update()
+    .resDefer(
+      guarded(async (c) => {
+        const channelId = c.ref.values?.[0] ?? null;
+        const current = await getGuild(c.env.DB, ctx.guildId);
+
+        if (channelId) {
+          const board = await boardCard(c.env, ctx.guildId);
+          const messageId = await sendChannelMessage(c.env, channelId, [board.card]);
+          if (!messageId) {
+            const warning = `I can't post in <#${channelId}>. Give Dispatch **View Channel** and **Send Messages** there, then pick it again.`;
+            await c.followup(view([await panelFor(c.env, c.interaction, ctx.guildId, current, warning)]));
+            return;
+          }
+          await updateSettings(c.env.DB, ctx.guildId, { board_channel_id: channelId, board_message_id: messageId, board_version: board.version });
+        } else {
+          await updateSettings(c.env.DB, ctx.guildId, { board_channel_id: null, board_message_id: null, board_version: null });
+        }
+
+        if (current?.board_channel_id && current.board_message_id) {
+          await deleteChannelMessage(c.env, current.board_channel_id, current.board_message_id);
+        }
+        const guild = await getGuild(c.env.DB, ctx.guildId);
+        await c.followup(view([await panelFor(c.env, c.interaction, ctx.guildId, guild)]));
+      })
+    );
+});
+
 export const select_settings_staff = factory.component(makeRoleSelect('settings-staff'), async (c) => {
   const ctx = inGuild(c.interaction);
   if (!ctx) return deny(c, messages.guildOnly);
@@ -234,6 +280,16 @@ export const modal_settings_edit = factory.modal(settingsModal(null), async (c) 
       .res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild, 'Cooldown must be a whole number of seconds between 0 and 3600.')]));
   }
 
+  // Absent only from a form opened before fast-tracking existed.
+  const trust = c.var.trust === undefined ? undefined : Number(c.var.trust);
+  if (trust !== undefined && (!Number.isInteger(trust) || trust < 0 || trust > 1000)) {
+    const guild = await getGuild(c.env.DB, ctx.guildId);
+    return c
+      .flags(...EPHEMERAL_V2)
+      .update()
+      .res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild, 'Fast-track must be a whole number of reports between 0 and 1000.')]));
+  }
+
   // Say so rather than silently dropping types past the limit.
   const typeCount = new Set((c.var.types ?? '').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)).size;
   if (typeCount > MAX_REPORT_TYPES) {
@@ -248,6 +304,7 @@ export const modal_settings_edit = factory.modal(settingsModal(null), async (c) 
     labels: parseLabels(c.var.labels ?? '').join(', '),
     report_types: parseReportTypes(c.var.types ?? '').join(', '),
     cooldown_seconds: cooldown,
+    trust_min_reports: trust,
   });
   return c.flags(...EPHEMERAL_V2).update().res(view([await panelFor(c.env, c.interaction, ctx.guildId, guild)]));
 });

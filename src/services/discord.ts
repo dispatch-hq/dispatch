@@ -44,6 +44,11 @@ export async function editChannelMessage(
   return res.ok || failed(`edit message ${messageId}`, res);
 }
 
+export async function deleteChannelMessage(env: Bindings, channelId: string, messageId: string): Promise<boolean> {
+  const res = await createRest(env.DISCORD_TOKEN)('DELETE', $channels$_$messages$_, [channelId, messageId]);
+  return res.ok || failed(`delete message ${messageId}`, res);
+}
+
 /**
  * Starts a public thread on a message. The thread reuses the message's id, so
  * it can be addressed later without storing anything. Needs *Create Public

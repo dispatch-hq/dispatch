@@ -45,6 +45,12 @@ export type GuildRow = {
   /** Comma separated; empty means no picker. */
   report_types: string;
   cooldown_seconds: number;
+  /** Accepted reports that fast-track a reporter past triage. 0 turns it off. */
+  trust_min_reports: number;
+  board_channel_id: string | null;
+  board_message_id: string | null;
+  /** Identifies what the status board last showed, to skip edits that change nothing. */
+  board_version: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -93,8 +99,22 @@ export type ReportRow = {
   triage_message_id: string | null;
   reviewed_by: string | null;
   review_note: string | null;
+  votes: number;
+  /** The updates-channel post for this report, kept current with its status and votes. */
+  announce_channel_id: string | null;
+  announce_message_id: string | null;
+  /** Staff's open question to the reporter; the report stays `pending` until it's answered. */
+  info_request: string | null;
+  info_requested_by: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type CannedReply = {
+  id: number;
+  guild_id: string;
+  label: string;
+  body: string;
 };
 
 export type RewardTier = {

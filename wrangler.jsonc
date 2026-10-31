@@ -20,6 +20,9 @@
 		"PREMIUM_SKU_ID": "1565441602623901777"
 	},
 
+	// The prebuilt pieces message images are stamped from (see src/cards/runtime.ts).
+	"rules": [{ "type": "Data", "globs": ["**/*.bin"], "fallthrough": true }],
+
 	// Builds the landing page before `wrangler deploy` and `wrangler dev`, so
 	// Git-triggered builds (Cloudflare Workers Builds) work from a fresh clone,
 	// where `site/dist` doesn't exist. Environments inherit it.
@@ -36,7 +39,7 @@
 		"binding": "ASSETS",
 		// Unknown paths get the site's 404.html (built from site/src/pages/404.astro).
 		"not_found_handling": "404-page",
-		"run_worker_first": ["/", "/interactions", "/invite", "/github/*", "/files/*", "/api/*"]
+		"run_worker_first": ["/", "/interactions", "/invite", "/github/*", "/files/*", "/cards/*", "/api/*"]
 	},
 
 	"d1_databases": [

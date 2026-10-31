@@ -11,6 +11,9 @@ Dispatch stores its state in **Cloudflare D1** (serverless SQLite), bound as `DB
 | `reports` | Bug report | Submitted content, rehosted attachments (JSON), status, the repository it targets (set when submitted, so queued reports know where to go), and the issue it became. Indexed by `(provider, repo_id, issue_number)` for webhook lookups. |
 | `report_drafts` | Pending "Report bug" | The text of a message parked while the reporter picks a report type, so the form can still be pre-filled. Ignored after a day and swept on the next write. |
 | `reward_tiers` | Reward role | `threshold` fixed reports → `role_id`. |
+| `report_votes` | Upvote | One row per member per report. `reports.votes` is the count, recomputed on every change so cards can draw it without a join. |
+| `canned_replies` | Saved reply | A staff reply offered on *Reject* and *Request info*. Names are unique per server, ignoring case. |
+| `muted_reporters` | Muted member | Can't report or vote in that server. |
 
 Report status lifecycle:
 
@@ -22,7 +25,7 @@ pending ────┤
                    └────── reopened
 ```
 
-Without a triage channel, reports skip `pending` and start at `open`.
+Without a triage channel, reports skip `pending` and start at `open`, as do reports from a fast-tracked member. While staff wait on the reporter a report stays `pending`, with its question in `info_request`.
 
 Repositories are tracked by **id**, not name, so renames and transfers (kept in sync through the `repository` webhook) don't break anything.
 

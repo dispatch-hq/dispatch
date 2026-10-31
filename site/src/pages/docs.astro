@@ -20,6 +20,8 @@ const commands = [
   ['/issues', 'Everyone', 'Your open reports across every server using Dispatch. Works in DMs too.'],
   ['/stats [member]', 'Everyone', 'Report counts and reward progress.'],
   ['/leaderboard', 'Everyone', 'Top reporters by fixed bugs.'],
+  ['/dispatch replies', 'Manage Server', 'Saved replies for rejecting or asking about a report.'],
+  ['/dispatch reporters', 'Manage Server', 'Mute or unmute a member, or list who is muted.'],
   ['/dispatch setup', 'Manage Server', 'Connect a GitHub repository. With Dispatch Pro, add up to 10; otherwise a new one replaces the old.'],
   ['/dispatch settings', 'Manage Server', 'Triage queue, updates channel, staff role, labels, report types, cooldown, reporter DMs.'],
   ['/dispatch disconnect', 'Manage Server', 'Unlink a repository.'],
@@ -29,6 +31,8 @@ const commands = [
 const settings = [
   ['Triage channel', 'Off', 'Where new reports wait for approval. Leave empty to file issues immediately.'],
   ['Updates channel', 'Off', 'Where new issues, fixes and reward roles are announced.'],
+  ['Status board', 'Off', 'One self-updating message with open, in-review and fixed counts and the most upvoted reports.'],
+  ['Fast-track', 'Off', 'Members with this many accepted reports, at 90% or better, skip the triage queue.'],
   ['Staff role', 'None', 'Can approve or reject reports. Members with Manage Server always can.'],
   ['Issue labels', 'bug', 'Added to every issue, comma separated. Missing labels are created automatically.'],
   ['Report types', 'None', 'Up to 10, such as Crash, UI, Performance. Members pick one before the form opens, and it is added to the issue as a label.'],

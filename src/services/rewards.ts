@@ -1,6 +1,8 @@
-import { getReporterStats, getRewardTiers } from '../db';
-import { notice } from '../lib/ui';
+import { cardImage, cardUrl, drawable } from '../cards';
+import { getReporterName, getReporterStats, getRewardTiers } from '../db';
+import { card, text } from '../lib/ui';
 import type { Bindings, GuildRow, RewardTier } from '../types';
+import { reputation } from './reputation';
 import { getMemberRoles, sendChannelMessage, sendDirectMessage, setMemberRole, type RoleChangeError } from './discord';
 
 export type RewardSync = {
@@ -53,12 +55,31 @@ export async function announceRewards(env: Bindings, guild: GuildRow, userId: st
   const roles = sync.added.map((t) => `<@&${t.role_id}>`).join(', ');
   const tasks: Promise<unknown>[] = [];
 
+  const [stats, name, tiers] = await Promise.all([
+    getReporterStats(env.DB, guild.guild_id, userId),
+    getReporterName(env.DB, guild.guild_id, userId),
+    getRewardTiers(env.DB, guild.guild_id),
+  ]);
+  const rep = reputation(stats, guild);
+  const next = tiers.find((t) => t.threshold > sync.fixed);
+  const url = await cardUrl(env, {
+    k: 'profile',
+    name: drawable(name ?? '', 40) || 'Member',
+    fixed: sync.fixed,
+    filed: stats.total - stats.pending - stats.rejected,
+    rate: rep.rate,
+    trusted: rep.trusted,
+    next: next ? { at: next.threshold } : null,
+    unlocked: true,
+  });
+  const picture = cardImage(url, `Reward unlocked for ${sync.fixed} fixed bug reports.`);
+
   if (guild.updates_channel_id) {
     tasks.push(
       sendChannelMessage(
         env,
         guild.updates_channel_id,
-        [notice(`<@${userId}> earned ${roles} for **${sync.fixed}** fixed bug reports.`)],
+        [card([picture, text(`<@${userId}> earned ${roles} for **${sync.fixed}** fixed bug reports.`)])],
         [userId]
       )
     );
@@ -66,7 +87,7 @@ export async function announceRewards(env: Bindings, guild: GuildRow, userId: st
   if (guild.dm_reporters) {
     tasks.push(
       sendDirectMessage(env, userId, [
-        notice(`### New reward unlocked\nYou've had **${sync.fixed}** bug reports fixed and earned a new role. Thank you!`),
+        card([picture, text(`### New reward unlocked\nYou've had **${sync.fixed}** bug reports fixed and earned a new role. Thank you!`)]),
       ])
     );
   }

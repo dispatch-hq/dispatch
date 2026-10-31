@@ -5,3 +5,4 @@ export * from './issues';
 export * from './report';
 export * from './stats';
 export * from './triage';
+export * from './votes';
