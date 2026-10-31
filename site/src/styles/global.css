@@ -684,6 +684,26 @@ html.menu-open {
   justify-content: center;
 }
 
+/* On phones the two actions stack at one width, so neither looks like the afterthought. */
+@media (max-width: 560px) {
+  .cta {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .hero.center .cta {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .cta .button {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
 @media (max-width: 900px) {
   .hero.center {
     min-height: 0;
