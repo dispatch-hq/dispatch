@@ -508,7 +508,6 @@ const schema = [
     const slides = [...root.querySelectorAll<HTMLElement>('.slide')];
     const dots = [...root.querySelectorAll<HTMLElement>('.car-dot')];
     let current = 0;
-    let timer: number | undefined;
 
     const show = (index: number) => {
       current = (index + slides.length) % slides.length;
@@ -523,32 +522,16 @@ const schema = [
       });
     };
 
-    const stop = () => window.clearInterval(timer);
-    const start = () => {
-      stop();
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        timer = window.setInterval(() => show(current + 1), 7000);
-      }
-    };
-
-    // Any manual interaction ends autoplay for good.
-    const go = (index: number) => {
-      stop();
-      show(index);
-    };
-
     root.querySelectorAll<HTMLElement>('.car-btn').forEach((button) =>
-      button.addEventListener('click', () => go(current + Number(button.dataset.dir)))
+      button.addEventListener('click', () => show(current + Number(button.dataset.dir)))
     );
-    dots.forEach((dot) => dot.addEventListener('click', () => go(Number(dot.dataset.index))));
+    dots.forEach((dot) => dot.addEventListener('click', () => show(Number(dot.dataset.index))));
     root.addEventListener('keydown', (event) => {
-      if (event.key === 'ArrowLeft') go(current - 1);
-      if (event.key === 'ArrowRight') go(current + 1);
+      if (event.key === 'ArrowLeft') show(current - 1);
+      if (event.key === 'ArrowRight') show(current + 1);
     });
-    root.addEventListener('pointerenter', stop);
 
     show(0);
-    start();
   }
 
   const filters = [...document.querySelectorAll<HTMLButtonElement>('.filter')];
