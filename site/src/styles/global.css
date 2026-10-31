@@ -75,7 +75,6 @@ code {
 .num,
 .ticker,
 .nav-links a,
-.button,
 .footer-row {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -519,79 +518,114 @@ html.menu-open {
 .button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 11px 20px;
+  padding: 12px 20px;
   background: var(--brand);
-  color: var(--navy);
-  font-weight: 500;
-  font-size: 12px;
+  color: #0c1030;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.4;
   text-decoration: none;
-  border: 1px solid var(--brand);
+  border: 1px solid #5f72e6;
+  border-radius: 12px;
+  /* A soft highlight along the top edge, like a lit pill, over a firm edge and a short shadow. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 10px 14px -8px rgba(255, 255, 255, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 6px 14px -6px rgba(0, 0, 0, 0.5);
   transition:
     background 0.15s,
-    color 0.15s,
+    box-shadow 0.15s,
     transform 0.2s var(--ease);
 }
 
 .button:hover {
   background: var(--brand-hover);
-  border-color: var(--brand-hover);
 }
 
 .button:active {
   transform: translateY(1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 6px 10px -8px rgba(255, 255, 255, 0.3),
+    0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
-.button span {
+.button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+.button .arrow {
+  flex-shrink: 0;
   transition: transform 0.2s var(--ease);
 }
 
-.button:hover span {
-  transform: translateX(4px);
+.button:hover .arrow {
+  transform: translateX(3px);
 }
 
 .button.small {
-  padding: 8px 14px;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 10px;
 }
 
 .button.large {
   padding: 16px 28px;
-  font-size: 13px;
+  font-size: 16px;
+  border-radius: 14px;
 }
 
+/* Secondary: the same lit pill, in raised dark. */
 .button.ghost {
-  background: transparent;
+  background: #232529;
   color: var(--text);
-  border-color: var(--border);
+  font-weight: 500;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 10px 14px -8px rgba(255, 255, 255, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 6px 14px -6px rgba(0, 0, 0, 0.5);
 }
 
 .button.ghost:hover {
-  background: var(--surface);
-  border-color: var(--brand);
-  color: var(--brand);
+  background: #2b2d32;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text);
 }
 
 /* Hero -------------------------------------------------------------------- */
 
 .hero-bg {
   position: relative;
-  border-bottom: 1px solid var(--border);
-  background:
-    radial-gradient(700px 380px at 85% 0%, rgba(38, 46, 99, 0.6), transparent 70%),
-    var(--bg);
   overflow: hidden;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(to bottom, transparent 50%, var(--bg) 100%),
+    linear-gradient(104deg, transparent 38%, rgba(132, 151, 250, 0.12) 52%, transparent 66%),
+    radial-gradient(ellipse 36% 44% at 34% 32%, rgba(132, 151, 250, 0.12), transparent 72%),
+    radial-gradient(ellipse 46% 64% at 86% 12%, rgba(63, 82, 217, 0.75), transparent 72%),
+    radial-gradient(ellipse 30% 22% at 72% 22%, rgba(132, 151, 250, 0.5), transparent 72%),
+    radial-gradient(ellipse 30% 40% at 98% 78%, rgba(132, 151, 250, 0.4), transparent 72%);
 }
 
-/* Faint blueprint grid, fading out towards the bottom. */
+/* Film grain over the haze. It thins out towards the left so the copy stays clean, and fades at the bottom. */
 .hero-bg::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: linear-gradient(to bottom, #000 30%, transparent 95%);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.62 0 0 0 0 0.7 0 0 0 0 1 0 0 0 0.7 -0.31'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  mask-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.2) 35%, #000 80%),
+    linear-gradient(to bottom, #000 50%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
   pointer-events: none;
 }
 
@@ -601,27 +635,71 @@ html.menu-open {
   grid-template-columns: 1.15fr 1fr;
   gap: 64px;
   align-items: center;
-  padding-top: 96px;
-  padding-bottom: 104px;
+  padding-top: 64px;
+  padding-bottom: 72px;
 }
 
 @media (max-width: 900px) {
   .hero {
     grid-template-columns: 1fr;
     gap: 48px;
-    padding-top: 56px;
+    padding-top: 48px;
+    padding-bottom: 56px;
+  }
+}
+
+/* Centered hero (home): one column, vertically centered in the first screen. */
+.hero.center {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+  min-height: min(calc(100svh - 65px), 880px);
+  padding-top: 80px;
+  padding-bottom: 80px;
+}
+
+.hero.center .hero-copy {
+  max-width: 1200px;
+}
+
+.hero.center h1 {
+  font-size: clamp(44px, 7.6vw, 108px);
+  margin-bottom: 32px;
+  text-wrap: balance;
+}
+
+.hero.center h1 em {
+  display: block;
+}
+
+.hero.center .lede {
+  font-size: clamp(18px, 1.7vw, 22px);
+  max-width: 34em;
+  margin-bottom: 40px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero.center .cta {
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .hero.center {
+    min-height: 0;
+    padding-top: 64px;
     padding-bottom: 64px;
   }
 }
 
 .tag {
   display: inline-block;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--brand);
   background: var(--navy);
   border: 1px solid var(--navy-line);
-  padding: 6px 12px;
-  margin-bottom: 28px;
+  padding: 8px 12px;
+  margin-bottom: 24px;
 }
 
 h1,
@@ -633,10 +711,10 @@ h3 {
 }
 
 h1 {
-  font-size: clamp(44px, 6.6vw, 84px);
-  line-height: 0.98;
+  font-size: clamp(44px, 5.6vw, 72px);
+  line-height: 1;
   letter-spacing: -0.03em;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 h1 em,
@@ -651,7 +729,7 @@ h2 em {
   font-weight: 300;
   color: var(--muted);
   max-width: 32em;
-  margin: 0 0 36px;
+  margin: 0 0 32px;
 }
 
 .cta {
@@ -707,7 +785,7 @@ h2 em {
 .d-card {
   background: var(--discord-card);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 14px 16px;
+  padding: 12px 16px;
 }
 
 .d-card + .d-card {
@@ -797,7 +875,7 @@ h2 em {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 36px;
+  margin-top: 24px;
   margin-right: 12px;
 }
 
@@ -860,7 +938,7 @@ h2 em {
 }
 
 .carousel .assure {
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 /* Slides: Discord and GitHub messages rebuilt from a real report. */
@@ -880,15 +958,15 @@ h2 em {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 10px;
-  padding: 20px 20px 16px;
+  gap: 8px;
+  padding: 20px;
 }
 
 .slide figcaption {
   display: flex;
   gap: 14px;
   align-items: baseline;
-  padding: 14px 20px 16px;
+  padding: 12px 20px 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   font-size: 14px;
   line-height: 1.5;
@@ -1321,7 +1399,7 @@ h2 em {
 }
 
 .ticker-set span {
-  padding: 14px 0;
+  padding: 12px 0;
 }
 
 .ticker-set i {
@@ -1353,17 +1431,29 @@ h2 em {
 /* Sections ---------------------------------------------------------------- */
 
 section {
-  padding: 104px 0;
-  border-bottom: 1px solid var(--border);
+  position: relative;
+  padding: 96px 0;
+}
+
+/* The divider fades out towards both edges instead of running edge to edge. */
+section::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border) 22%, var(--border) 78%, transparent);
+  pointer-events: none;
 }
 
 .section-head {
-  margin-bottom: 56px;
+  margin-bottom: 48px;
 }
 
 .index {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--brand);
   margin-bottom: 20px;
 }
@@ -1396,7 +1486,7 @@ h2 {
 .cell {
   position: relative;
   background: var(--surface);
-  padding: 36px 32px 40px;
+  padding: 32px;
   transition: background 0.2s;
 }
 
@@ -1436,7 +1526,7 @@ h2 {
   display: block;
   font-size: 12px;
   color: var(--brand);
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
 /* Commands ---------------------------------------------------------------- */
@@ -1452,7 +1542,7 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   background: transparent;
   color: var(--muted);
   border: 1px solid var(--border);
@@ -1469,7 +1559,7 @@ h2 {
 .filter b {
   font-weight: 500;
   font-size: 11px;
-  padding: 1px 6px;
+  padding: 2px 8px;
   background: var(--surface-hover);
   color: var(--muted);
 }
@@ -1506,7 +1596,7 @@ h2 {
 
 .command-card {
   position: relative;
-  min-height: 150px;
+  min-height: 144px;
   padding: 24px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1542,7 +1632,7 @@ h2 {
 .command-top {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
@@ -1573,9 +1663,9 @@ h2 {
 }
 
 .chip {
-  font: 500 10px var(--font-mono);
+  font: 500 11px var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--muted);
   background: var(--surface-hover);
   padding: 4px 8px;
@@ -1585,7 +1675,7 @@ h2 {
   color: var(--brand);
   background: var(--navy);
   border: 1px solid var(--navy-line);
-  padding: 3px 7px;
+  padding: 3px 8px;
 }
 
 .command-card p {
@@ -1595,8 +1685,8 @@ h2 {
 }
 
 .command-note {
-  margin: 20px 0 0;
-  font: 400 11px var(--font-mono);
+  margin: 24px 0 0;
+  font: 400 12px var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
@@ -1608,11 +1698,15 @@ h2 {
 
 /* Reassurance line under a call to action. */
 .assure {
-  margin: 20px 0 0;
-  font: 400 11px var(--font-mono);
+  margin: 24px 0 0;
+  font: 400 12px var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
+}
+
+.assure {
+  text-wrap: balance;
 }
 
 .assure a {
@@ -1693,7 +1787,14 @@ h2 {
 .docs-body section:last-child {
   margin-bottom: 0;
   padding-bottom: 0;
-  border-bottom: 0;
+}
+
+.docs-body section::after {
+  background: linear-gradient(to right, var(--border), var(--border) 70%, transparent);
+}
+
+.docs-body section:last-child::after {
+  display: none;
 }
 
 .docs-body h2 {
@@ -1810,10 +1911,10 @@ h2 {
 .points {
   list-style: none;
   margin: 24px 0 0;
-  padding: 20px 0 0;
+  padding: 24px 0 0;
   border-top: 1px solid var(--border);
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .points li {
@@ -2338,15 +2439,10 @@ footer {
 
 .plan .points {
   align-self: stretch;
-  margin-bottom: 32px;
-}
-
-.plan .points + .button {
-  margin-top: auto;
 }
 
 .plan .plan-note {
-  margin: 12px 0 0;
+  margin: 24px 0 0;
   font-size: 13px;
 }
 
@@ -2672,22 +2768,211 @@ footer {
   }
 }
 
-/* HALLOWEEN-START ---------------------------------------------------------- */
-/* Seasonal touches. Delete this block (and the ghost in Base.astro) to undo them. */
+/* Breathing haze (home hero): soft blobs that drift, stretch and merge like a slow fluid. Each runs its own long loop so the
+   whole never repeats in sync. Only transform animates. */
+.hero-bg.breathe {
+  isolation: isolate;
+  background-image: none;
+}
 
-/* Cobweb tucked into the top-left corner of the hero. */
-.hero-bg::after {
-  content: '';
+.haze {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 220px;
-  height: 220px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='%23eeeef2' stroke-width='0.6'%3E%3Cpath d='M0 0L100 0M0 0L90 40M0 0L65 65M0 0L40 90M0 0L0 100'/%3E%3Cpath d='M22 0Q16 16 0 22M42 0Q30 30 0 42M62 0Q44 44 0 62M82 0Q58 58 0 82'/%3E%3C/svg%3E")
-    no-repeat top left / contain;
-  opacity: 0.16;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, #000 45%, transparent 88%);
+}
+
+.blob {
+  position: absolute;
+  display: block;
+  will-change: transform;
+  background: radial-gradient(closest-side, var(--c), transparent);
+  animation: var(--a) var(--d) ease-in-out var(--o, 0s) infinite;
+}
+
+.b1 {
+  --c: rgba(63, 82, 217, 0.75);
+  --a: drift-1;
+  --d: 23s;
+  --o: -11s;
+  left: 58%;
+  top: -34%;
+  width: 60%;
+  height: 104%;
+}
+
+.b2 {
+  --c: rgba(132, 151, 250, 0.5);
+  --a: drift-2;
+  --d: 19s;
+  --o: -7s;
+  left: 52%;
+  top: -6%;
+  width: 36%;
+  height: 54%;
+}
+
+.b3 {
+  --c: rgba(132, 151, 250, 0.4);
+  --a: drift-3;
+  --d: 29s;
+  --o: -12s;
+  left: 76%;
+  top: 40%;
+  width: 40%;
+  height: 76%;
+}
+
+.b4 {
+  --c: rgba(63, 82, 217, 0.3);
+  --a: drift-4;
+  --d: 17s;
+  --o: -4s;
+  left: 32%;
+  top: -14%;
+  width: 38%;
+  height: 64%;
+}
+
+.b5 {
+  --c: rgba(132, 151, 250, 0.14);
+  --a: drift-5;
+  --d: 31s;
+  --o: -18s;
+  left: 8%;
+  top: 4%;
+  width: 40%;
+  height: 64%;
+}
+
+@keyframes drift-1 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1, 1) rotate(0deg);
+  }
+  30% {
+    transform: translate(-12%, 8%) scale(1.12, 0.92) rotate(8deg);
+  }
+  60% {
+    transform: translate(-4%, 16%) scale(0.94, 1.1) rotate(-6deg);
+  }
+  80% {
+    transform: translate(6%, 4%) scale(1.06, 1) rotate(3deg);
+  }
+}
+
+@keyframes drift-2 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1, 1) rotate(0deg);
+  }
+  25% {
+    transform: translate(18%, 20%) scale(1.2, 0.85) rotate(-14deg);
+  }
+  55% {
+    transform: translate(-16%, 34%) scale(0.9, 1.2) rotate(10deg);
+  }
+  80% {
+    transform: translate(-6%, 8%) scale(1.1, 1) rotate(-4deg);
+  }
+}
+
+@keyframes drift-3 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1, 1) rotate(0deg);
+  }
+  35% {
+    transform: translate(-22%, -14%) scale(1.15, 0.9) rotate(12deg);
+  }
+  70% {
+    transform: translate(-8%, -26%) scale(0.92, 1.14) rotate(-8deg);
+  }
+}
+
+@keyframes drift-4 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1, 1) rotate(0deg);
+  }
+  33% {
+    transform: translate(24%, 12%) scale(1.18, 0.9) rotate(-10deg);
+  }
+  66% {
+    transform: translate(10%, -10%) scale(0.9, 1.15) rotate(12deg);
+  }
+}
+
+@keyframes drift-5 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1, 1);
+  }
+  40% {
+    transform: translate(26%, 14%) scale(1.2, 0.9);
+  }
+  75% {
+    transform: translate(8%, 30%) scale(0.92, 1.12);
+  }
+}
+
+/* Halo shader (home hero). When WebGL is running it replaces the CSS haze and grain. */
+.halo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  display: block;
   pointer-events: none;
 }
+
+.hero-bg.gl .haze,
+.hero-bg.gl::before {
+  display: none;
+}
+
+/* Navigation and buttons share one face: body sans, sentence case. Easier to read than tracked mono caps. */
+.nav-links a,
+.nav-trigger,
+.button {
+  font-family: var(--font-body);
+  letter-spacing: -0.005em;
+  text-transform: none;
+}
+
+.nav-links a,
+.nav-trigger {
+  font-size: 15px;
+  font-weight: 500;
+  color: #b4b6c0;
+}
+
+.nav-links a:hover,
+.nav-trigger:hover,
+.nav-trigger[aria-expanded='true'] {
+  color: var(--text);
+}
+
+.nav-links {
+  gap: 32px;
+}
+
+.filter,
+.mobile-menu-links a {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.mobile-menu-links a {
+  font-size: 12px;
+}
+
+/* HALLOWEEN-START ---------------------------------------------------------- */
+/* Seasonal touches. Delete this block (and the ghost in Base.astro) to undo them. */
 
 /* First-visit entrance (see Base.astro): a ghost floats up in front of a curtain, then sweeps it away to reveal the page. */
 .ghost-curtain {
