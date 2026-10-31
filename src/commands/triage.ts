@@ -77,6 +77,8 @@ async function loadForReview(db: D1Database, guildId: string, reportId: number) 
   return { guild, report: report?.guild_id === guildId ? report : null };
 }
 
+const SELF_INFO = "You can't ask a question about your own report. Ask another staff member to review it.";
+
 /** The outcome of rejecting or asking, in words for the staff member who did it. */
 async function applyDecision(
   env: Bindings,
@@ -97,6 +99,7 @@ async function applyDecision(
     return `Rejected report #${report.id}.`;
   }
 
+  if (report.reporter_id === reviewerId) return SELF_INFO;
   if (report.status !== 'pending' || !note) {
     await refreshReportMessages(env, report.id);
     return 'That report has already been reviewed.';
@@ -175,6 +178,7 @@ function decisionButton(decision: Decision) {
     const { guild, report } = await loadForReview(c.env.DB, ctx.guildId, reportId);
     if (!guild || !report) return deny(c, 'That report no longer exists.');
     if (!canTriage(ctx.member, guild)) return deny(c, messages.staffOnly);
+    if (decision === 'info' && report.reporter_id === ctx.member.user.id) return deny(c, SELF_INFO);
     if (report.status !== 'pending') {
       return c
         .flags(...PUBLIC_V2)

@@ -310,6 +310,20 @@ describe('asking the reporter for information', () => {
     const res = await w.interact({ type: 3, ...dm, data: { custom_id: `report-info;${id}`, component_type: 2 } });
     expect(textOf(res.json)).toContain('no longer need');
   });
+
+  it("won't let staff question their own report", async () => {
+    await submit('My own report', IDS.admin);
+    const id = latest().id;
+    const res = await press(`triage-info;${id}`);
+    expect(textOf(res.json)).toContain("can't ask a question about your own report");
+    expect(res.json.data.flags & EPHEMERAL).toBeTruthy();
+
+    const sent = discordCalls('POST', /\/channels\/dm-\d+\/messages/).length;
+    const forced = await ask(id, 'Asking myself');
+    expect(textOf(followupOf(forced.token).body)).toContain("can't ask a question about your own report");
+    expect(row(id).info_request).toBeNull();
+    expect(discordCalls('POST', /\/channels\/dm-\d+\/messages/)).toHaveLength(sent);
+  });
 });
 
 describe('reporter reputation', () => {
