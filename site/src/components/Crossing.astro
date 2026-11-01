@@ -1,0 +1,445 @@
+---
+// One report crossing from Discord to GitHub and back, on a 12s loop: approved, filed, fixed, reporter told.
+// The wording on the Discord side matches what the bot sends (see src/services/reports.ts).
+---
+
+<figure
+  class="crossing"
+  role="img"
+  aria-label="A bug report in Discord is approved and becomes a GitHub issue. When the issue is closed, Dispatch tells the reporter it was fixed."
+>
+  <div class="pane discord-pane">
+    <div class="label"># triage</div>
+    <div class="msg">
+      <img class="avatar" src="/blackcat.webp" alt="" width="36" height="36" loading="lazy" />
+      <div>
+        <div class="who"><b>BlackCat</b><time>17:43</time></div>
+        <p>Why does the launcher crash whenever I change this setting?</p>
+      </div>
+    </div>
+    <div class="msg">
+      <span class="avatar bot"><img src="/logo.svg" alt="" width="18" height="20" /></span>
+      <div class="grow">
+        <div class="who"><b>Dispatch</b><span class="app">APP</span><time>17:44</time></div>
+        <div class="report">
+          <b>Launcher crashes when I change this setting</b>
+          <small>Report #142 · from @BlackCat · Crash</small>
+          <div class="states">
+            <div class="state s-pending"><i class="ok">Approve</i><i class="no">Reject</i><i>Request info</i></div>
+            <div class="state s-filed"><span><b>Filed</b> as acme/launcher#142</span><i>View issue</i></div>
+            <div class="state s-fixed"><span><b>Fixed</b> · acme/launcher#142</span><i>View issue</i></div>
+          </div>
+          <div class="courier courier-out"><img src="/logo.svg" alt="" width="11" height="13" />Report #142</div>
+          <div class="courier courier-back">Fixed</div>
+        </div>
+        <div class="dm"><b>DM to BlackCat</b> Your bug was fixed. Thanks for reporting it!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="seam"></div>
+
+  <div class="pane github-pane">
+    <div class="label">acme / launcher · Issues</div>
+    <div class="issue">
+      <h3>Launcher crashes when I change this setting <span>#142</span></h3>
+      <div class="meta">
+        <div class="badges"><i class="open">Open</i><i class="closed">Closed</i></div>
+        <span>opened by dispatch-app</span>
+      </div>
+      <div class="labels"><i>bug</i><i>Crash</i></div>
+      <div class="fields">
+        <p><b>Steps to reproduce</b>Open settings, change the render mode.</p>
+        <p><b>Environment</b>Windows 11, latest version</p>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<script>
+  // Plays only while on screen, so the story isn't half over by the time someone scrolls to it.
+  const crossing = document.querySelector('.crossing');
+  if (crossing) {
+    crossing.classList.add('paused');
+    new IntersectionObserver(([entry]) => crossing.classList.toggle('paused', !entry.isIntersecting), { threshold: 0.3 }).observe(crossing);
+  }
+</script>
+
+<style>
+  .crossing {
+    --pad: 24px;
+    --loop: 12s;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+    margin: 0;
+    border: 1px solid var(--border);
+    font-size: 14.5px;
+    line-height: 1.45;
+  }
+  .crossing.paused * {
+    animation-play-state: paused;
+  }
+  .pane {
+    min-width: 0;
+    padding: 0 var(--pad) var(--pad);
+  }
+  .discord-pane {
+    background: #2b2d31;
+    color: var(--discord-text);
+  }
+  .github-pane {
+    background: #0d1117;
+    color: #e6edf3;
+  }
+  .seam {
+    background: rgba(132, 151, 250, 0.5);
+  }
+  .label {
+    padding: 14px 0;
+    font: 400 12px var(--font-mono);
+    color: var(--muted);
+  }
+  .msg {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .msg:last-child {
+    margin-bottom: 0;
+  }
+  .msg p {
+    margin: 0;
+  }
+  .avatar {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+  }
+  .bot {
+    display: grid;
+    place-items: center;
+    background: var(--navy);
+  }
+  .grow {
+    flex: 1;
+    min-width: 0;
+  }
+  .who {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .who b {
+    color: #fff;
+    font-weight: 600;
+  }
+  .who time {
+    font-size: 12px;
+    color: var(--discord-muted);
+  }
+  .app {
+    padding: 0 5px;
+    background: #5865f2;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .report {
+    position: relative;
+    margin-top: 6px;
+    padding: 12px 14px;
+    background: #232428;
+    outline: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  .report > b {
+    display: block;
+    color: #fff;
+    font-weight: 600;
+  }
+  .report small {
+    display: block;
+    margin: 2px 0 10px;
+    color: var(--discord-muted);
+  }
+  /* The three states share one grid cell, so the card never changes height. */
+  .states {
+    display: grid;
+  }
+  .state {
+    grid-area: 1 / 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    animation: var(--loop) linear infinite;
+  }
+  .state span {
+    margin-right: auto;
+  }
+  .state span b {
+    color: #fff;
+    font-weight: 600;
+  }
+  .state i {
+    padding: 3px 10px;
+    background: #4e5058;
+    color: #fff;
+    font: 500 13px var(--font-body);
+  }
+  .state .ok {
+    background: #248046;
+    animation: press var(--loop) linear infinite;
+  }
+  .state .no {
+    background: #da373c;
+  }
+  .s-pending {
+    animation-name: show-pending;
+  }
+  .s-filed {
+    animation-name: show-filed;
+  }
+  .s-fixed {
+    animation-name: show-fixed;
+  }
+  @keyframes press {
+    0%,
+    8%,
+    13%,
+    100% {
+      opacity: 1;
+    }
+    10.5% {
+      opacity: 0.5;
+    }
+  }
+  @keyframes show-pending {
+    0%,
+    12% {
+      opacity: 1;
+    }
+    14%,
+    97% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes show-filed {
+    0%,
+    13% {
+      opacity: 0;
+    }
+    16%,
+    74% {
+      opacity: 1;
+    }
+    77%,
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes show-fixed {
+    0%,
+    75% {
+      opacity: 0;
+    }
+    78%,
+    96% {
+      opacity: 1;
+    }
+    99%,
+    100% {
+      opacity: 0;
+    }
+  }
+  /* Couriers run between the card and the seam, whose distance from the card's edge is the pane padding. */
+  .courier {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    background: var(--navy);
+    border: 1px solid var(--brand);
+    font: 500 11.5px var(--font-mono);
+    color: var(--brand);
+    white-space: nowrap;
+    opacity: 0;
+  }
+  .courier-out {
+    animation: courier-out var(--loop) cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+  .courier-back {
+    animation: courier-back var(--loop) cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+  @keyframes courier-out {
+    0%,
+    12% {
+      opacity: 0;
+      transform: translate(-110px, -50%);
+    }
+    15%,
+    31% {
+      opacity: 1;
+    }
+    34%,
+    100% {
+      opacity: 0;
+      transform: translate(var(--pad), -50%);
+    }
+  }
+  @keyframes courier-back {
+    0%,
+    62% {
+      opacity: 0;
+      transform: translate(var(--pad), -50%);
+    }
+    65%,
+    74% {
+      opacity: 1;
+    }
+    77%,
+    100% {
+      opacity: 0;
+      transform: translate(-110px, -50%);
+    }
+  }
+  .dm {
+    margin-top: 8px;
+    font-size: 13.5px;
+    color: var(--discord-muted);
+    animation: show-dm var(--loop) linear infinite;
+  }
+  .dm b {
+    margin-right: 6px;
+    color: var(--brand);
+    font-weight: 500;
+  }
+  @keyframes show-dm {
+    0%,
+    79% {
+      opacity: 0;
+    }
+    83%,
+    96% {
+      opacity: 1;
+    }
+    99%,
+    100% {
+      opacity: 0;
+    }
+  }
+  .issue {
+    animation: arrive var(--loop) linear infinite;
+  }
+  @keyframes arrive {
+    0%,
+    30% {
+      opacity: 0.25;
+    }
+    36%,
+    96% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.25;
+    }
+  }
+  .issue h3 {
+    margin: 0;
+    font: 500 19px / 1.25 var(--font-body);
+  }
+  .issue h3 span {
+    font-weight: 300;
+    color: #8b949e;
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+    font-size: 13px;
+    color: #8b949e;
+  }
+  .badges {
+    display: grid;
+  }
+  .badges i {
+    grid-area: 1 / 1;
+    padding: 2px 10px;
+    color: #fff;
+    font-style: normal;
+    font-weight: 500;
+    text-align: center;
+  }
+  .open {
+    background: #238636;
+  }
+  .closed {
+    background: #8957e5;
+    animation: show-closed var(--loop) linear infinite;
+  }
+  @keyframes show-closed {
+    0%,
+    60% {
+      opacity: 0;
+    }
+    62%,
+    96% {
+      opacity: 1;
+    }
+    99%,
+    100% {
+      opacity: 0;
+    }
+  }
+  .labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .labels i {
+    padding: 1px 8px;
+    border: 1px solid var(--navy-line);
+    background: var(--navy);
+    color: var(--brand);
+    font: 400 12px var(--font-mono);
+  }
+  .fields {
+    padding-top: 10px;
+    border-top: 1px solid #30363d;
+    font-size: 13.5px;
+  }
+  .fields p {
+    margin: 0 0 6px;
+    color: #c9d1d9;
+  }
+  .fields p:last-child {
+    margin-bottom: 0;
+  }
+  .fields b {
+    display: block;
+    font-weight: 600;
+    color: #e6edf3;
+  }
+  /* Stacked on phones the seam runs sideways, so the couriers have nowhere to travel; the states tell the story. */
+  @media (max-width: 760px) {
+    .crossing {
+      --pad: 16px;
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .seam {
+      height: 1px;
+    }
+    .courier {
+      display: none;
+    }
+  }
+</style>
