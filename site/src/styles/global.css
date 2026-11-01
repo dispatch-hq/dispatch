@@ -92,6 +92,12 @@ code {
   border-bottom: 1px solid var(--border);
 }
 
+/* The blur is the costliest thing on the page to repaint; drop it while a dropdown is open. */
+.nav.has-mega {
+  background: var(--bg);
+  backdrop-filter: none;
+}
+
 .nav-inner {
   display: flex;
   align-items: center;
@@ -175,7 +181,8 @@ code {
   color: var(--brand);
 }
 
-/* Dropdown panels: full-bleed under the bar, links on the left, spotlight on the right. */
+/* Dropdown: one full-bleed viewport under the bar that every panel shares, so moving between
+   triggers slides the content and resizes the panel instead of closing and reopening it. */
 .mega {
   position: absolute;
   top: 100%;
@@ -183,18 +190,188 @@ code {
   right: 0;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
-  animation: mega-in 0.22s var(--ease) both;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.16s,
+    transform 0.22s var(--ease);
+}
+
+/* A gradient instead of a blurred box-shadow: far cheaper to paint without GPU acceleration. */
+.mega::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: linear-gradient(rgba(0, 0, 0, 0.4), transparent);
+  pointer-events: none;
+}
+
+.mega.is-open {
+  opacity: 1;
+  transform: none;
 }
 
 .mega[hidden] {
   display: none;
 }
 
-@keyframes mega-in {
+/* Content column: a plain overflow clip, which is much cheaper than a clip-path mask. */
+.mega-clip {
+  position: relative;
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  overflow: hidden;
+  transition: height 0.28s var(--ease);
+}
+
+.mega-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.mega-panel.is-active,
+.mega-panel.is-leaving {
+  visibility: visible;
+  opacity: 1;
+}
+
+.mega-panel.is-leaving {
+  pointer-events: none;
+}
+
+.mega-inner {
+  animation: mega-from-right 0.32s var(--ease) both;
+}
+
+.mega-panel[data-motion='from-left'] .mega-inner {
+  animation: mega-from-left 0.32s var(--ease) both;
+}
+
+.mega-panel[data-motion='to-left'] .mega-inner {
+  animation: mega-to-left 0.32s var(--ease) both;
+}
+
+.mega-panel[data-motion='to-right'] .mega-inner {
+  animation: mega-to-right 0.32s var(--ease) both;
+}
+
+@keyframes mega-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes mega-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes mega-to-left {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes mega-to-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.mega-inner {
+  animation: mega-from-right 0.26s var(--ease) 0.1s both;
+}
+
+.mega-panel[data-motion='from-left'] .mega-inner {
+  animation: mega-from-left 0.26s var(--ease) 0.1s both;
+}
+
+.mega-panel[data-motion='to-left'] .mega-inner {
+  animation: mega-to-left 0.12s ease-in both;
+}
+
+.mega-panel[data-motion='to-right'] .mega-inner {
+  animation: mega-to-right 0.12s ease-in both;
+}
+
+@keyframes mega-from-right {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateX(48px);
+  }
+}
+
+@keyframes mega-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+}
+
+@keyframes mega-to-left {
+  to {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+}
+
+@keyframes mega-to-right {
+  to {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+}
+
+.mega-inner {
+  animation: mega-from-right 0.32s var(--ease) both;
+}
+
+.mega-panel[data-motion='from-left'] .mega-inner {
+  animation: mega-from-left 0.32s var(--ease) both;
+}
+
+.mega-panel[data-motion='to-left'] .mega-inner {
+  animation: mega-to-left 0.32s var(--ease) both;
+}
+
+.mega-panel[data-motion='to-right'] .mega-inner {
+  animation: mega-to-right 0.32s var(--ease) both;
+}
+
+@keyframes mega-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes mega-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes mega-to-left {
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes mega-to-right {
+  to {
+    opacity: 0;
+    transform: translateX(100%);
   }
 }
 
