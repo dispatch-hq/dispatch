@@ -825,40 +825,321 @@ html.menu-open {
   }
 }
 
-/* Centered hero (home): one column, vertically centered in the first screen. */
-.hero.center {
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: center;
-  text-align: center;
-  min-height: min(calc(100svh - 65px), 880px);
-  padding-top: 80px;
-  padding-bottom: 80px;
+/* Home hero: a lit planet edge, painted once and never animated, with the product rising out of it
+   and cut off by the fold. */
+.horizon {
+  --r: max(92vw, 900px);
+  position: relative;
+  height: calc(100svh - 65px);
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 34% 16% at 50% 62%, rgba(190, 202, 255, 0.34), transparent 100%),
+    radial-gradient(
+      circle var(--r) at 50% calc(62% + var(--r)),
+      #0a0b14 calc(var(--r) - 90px),
+      #161b3d calc(var(--r) - 8px),
+      #dfe5ff calc(var(--r) - 1px),
+      rgba(132, 151, 250, 0.62) calc(var(--r) + 3px),
+      rgba(84, 104, 232, 0.26) calc(var(--r) + 54px),
+      rgba(63, 82, 217, 0.1) calc(var(--r) + 170px),
+      transparent calc(var(--r) + 380px)
+    ),
+    #0e0f12;
 }
 
-.hero.center .hero-copy {
+/* Shooting stars: each shoots along its angle, flares where it lands, then fades. Only transform and opacity
+   animate, on tiny layers, so nothing repaints. The loops differ in length so the stars never fall into step. */
+.stars {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.star {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  animation: star-shoot var(--t) linear var(--w) infinite;
+}
+
+.star::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -0.5px;
+  width: 110px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(223, 229, 255, 0.7));
+  transform-origin: right center;
+  transform: scaleX(0);
+  animation: star-tail var(--t) linear var(--w) infinite;
+}
+
+.star::after {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  background:
+    radial-gradient(circle, #fff 0, rgba(223, 229, 255, 0.85) 9%, rgba(132, 151, 250, 0.3) 26%, transparent 60%),
+    linear-gradient(to right, transparent, rgba(223, 229, 255, 0.75), transparent) center / 100% 1px no-repeat,
+    linear-gradient(to bottom, transparent, rgba(223, 229, 255, 0.75), transparent) center / 1px 100% no-repeat;
+  transform: scale(0.2);
+  animation: star-head var(--t) linear var(--w) infinite;
+}
+
+.s1 {
+  --a: 24deg;
+  --d: 22vw;
+  --t: 14s;
+  --w: 1.5s;
+  left: 7%;
+  top: 8%;
+}
+
+.s2 {
+  --a: 28deg;
+  --d: 17vw;
+  --t: 18s;
+  --w: 6s;
+  left: 67%;
+  top: 5%;
+}
+
+.s3 {
+  --a: 156deg;
+  --d: 16vw;
+  --t: 21s;
+  --w: 11s;
+  left: 36%;
+  top: 3%;
+}
+
+.s4 {
+  --a: 150deg;
+  --d: 14vw;
+  --t: 16s;
+  --w: 15s;
+  left: 92%;
+  top: 20%;
+}
+
+@keyframes star-shoot {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateX(0);
+    animation-timing-function: cubic-bezier(0.2, 0.6, 0.3, 1);
+  }
+  0.6% {
+    opacity: 1;
+  }
+  7% {
+    transform: rotate(var(--a)) translateX(var(--d));
+  }
+  13.5% {
+    opacity: 1;
+  }
+  15%,
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateX(var(--d));
+  }
+}
+
+@keyframes star-tail {
+  0% {
+    opacity: 1;
+    transform: scaleX(0);
+  }
+  2.5% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  7% {
+    opacity: 0.7;
+    transform: scaleX(0.55);
+  }
+  9%,
+  100% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+}
+
+@keyframes star-head {
+  0%,
+  5.5% {
+    opacity: 0.9;
+    transform: scale(0.2);
+  }
+  8% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  10% {
+    opacity: 0.9;
+    transform: scale(0.72);
+  }
+  15%,
+  100% {
+    opacity: 0;
+    transform: scale(0.25);
+  }
+}
+
+.horizon-copy {
+  position: relative;
+  flex: none;
   max-width: 1200px;
+  padding: clamp(28px, 6vh, 72px) 24px 0;
+  text-align: center;
 }
 
-.hero.center h1 {
-  font-size: clamp(44px, 7.6vw, 108px);
-  margin-bottom: 32px;
+.horizon-copy h1 {
+  font-size: min(6.6vw, 10.5vh);
+  margin-bottom: clamp(14px, 2.6vh, 26px);
   text-wrap: balance;
 }
 
-.hero.center h1 em {
+.horizon-copy h1 em {
   display: block;
 }
 
-.hero.center .lede {
-  font-size: clamp(18px, 1.7vw, 22px);
-  max-width: 34em;
-  margin-bottom: 40px;
-  margin-left: auto;
-  margin-right: auto;
+.horizon-copy .lede {
+  max-width: 36em;
+  margin: 0 auto clamp(16px, 3vh, 30px);
+  font-size: clamp(16px, 2.1vh, 20px);
+  line-height: 1.55;
+  color: #b5b7c4;
 }
 
-.hero.center .cta {
+.horizon-copy .cta {
   justify-content: center;
+}
+
+.horizon-card {
+  position: relative;
+  flex: 1 0 96px;
+  width: min(860px, calc(100% - 48px));
+  margin-top: clamp(24px, 4.5vh, 48px);
+  background: #17181c;
+  border: 1px solid #3a3f5c;
+  border-bottom: 0;
+  overflow: hidden;
+  animation: horizon-rise 1s var(--ease) 0.15s both;
+}
+
+@keyframes horizon-rise {
+  from {
+    opacity: 0;
+    transform: translateY(48px);
+  }
+}
+
+.horizon-card .bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font: 400 12px var(--font-mono);
+  color: var(--muted);
+}
+
+.horizon-card .bar b {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.horizon-card .bar span {
+  margin-left: auto;
+  color: var(--brand);
+}
+
+.horizon-card .body {
+  padding: 18px 20px;
+}
+
+.horizon-card h2 {
+  max-width: none;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.horizon-card small {
+  display: block;
+  margin: 6px 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.horizon-card p {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #c8cad3;
+}
+
+.horizon-card .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.horizon-card .actions i {
+  padding: 6px 14px;
+  background: #2b2d33;
+  font: 500 13px var(--font-body);
+}
+
+.horizon-card .actions .ok {
+  background: #2f7d4f;
+}
+
+.horizon-card .actions .no {
+  background: #b23a3f;
+}
+
+.horizon-card .thread {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.horizon-card .thread b {
+  margin-right: 6px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+@media (max-width: 760px) {
+  .horizon {
+    --r: 720px;
+    height: auto;
+    min-height: calc(100svh - 65px);
+  }
+
+  .horizon-copy h1 {
+    font-size: 44px;
+  }
+
+  .horizon-card {
+    flex-basis: 200px;
+  }
+
+  .horizon-card .bar span {
+    display: none;
+  }
 }
 
 /* On phones the two actions stack at one width, so neither looks like the afterthought. */
@@ -870,7 +1151,7 @@ html.menu-open {
     max-width: 360px;
   }
 
-  .hero.center .cta {
+  .horizon-copy .cta {
     margin-left: auto;
     margin-right: auto;
   }
@@ -878,14 +1159,6 @@ html.menu-open {
   .cta .button {
     justify-content: center;
     width: 100%;
-  }
-}
-
-@media (max-width: 900px) {
-  .hero.center {
-    min-height: 0;
-    padding-top: 64px;
-    padding-bottom: 64px;
   }
 }
 
@@ -1030,561 +1303,16 @@ h2 em {
   margin-top: 12px;
 }
 
-/* Carousel ---------------------------------------------------------------- */
-
-.carousel {
-  min-width: 0;
-  outline: none;
-  animation: rise 0.8s var(--ease) 0.3s both;
-}
-
-.carousel .discord {
-  animation: none;
-}
-
-/* All slides share one grid cell so the box is as tall as the tallest one. */
-.slides {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.slide {
-  grid-area: 1 / 1;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateX(14px);
-  transition:
-    opacity 0.35s var(--ease),
-    transform 0.35s var(--ease),
-    visibility 0s 0.35s;
-}
-
-.slide.is-active {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-  transition:
-    opacity 0.35s var(--ease),
-    transform 0.35s var(--ease);
-}
-
-.car-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 24px;
-  margin-right: 12px;
-}
-
-.car-btn {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
-  font: 400 18px var(--font-mono);
-  cursor: pointer;
-  transition:
-    border-color 0.15s,
-    color 0.15s,
-    background 0.15s;
-}
-
-.car-btn:hover,
-.car-btn:focus-visible {
-  border-color: var(--brand);
-  color: var(--brand);
-  background: var(--surface);
-  outline: none;
-}
-
-.car-dots {
-  display: flex;
-  flex: 1;
-  justify-content: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 0 12px;
-}
-
-.car-dot {
-  flex: 0 1 28px;
-  min-width: 6px;
-  height: 4px;
-  padding: 0;
-  border: 0;
-  background: var(--border);
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.car-dot:hover {
-  background: var(--muted);
-}
-
-.car-dot.is-active {
-  background: var(--brand);
-}
-
-.car-dot:focus-visible,
-.carousel:focus-visible .discord {
-  outline: 1px solid var(--brand);
-  outline-offset: 3px;
-}
-
-.carousel .assure {
-  margin-top: 16px;
-}
-
-/* Slides: Discord and GitHub messages rebuilt from a real report. */
-.carousel .discord {
-  padding: 0;
-}
-
-.slide {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  margin: 0;
-}
-
-.slide-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  padding: 20px;
-}
-
-.slide figcaption {
-  display: flex;
-  gap: 14px;
-  align-items: baseline;
-  padding: 12px 20px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--discord-text);
-}
-
-.slide figcaption span {
-  flex-shrink: 0;
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  color: var(--brand);
-}
-
-.slide .d-card + .d-card {
-  margin-top: 0;
-}
-
-.slide .cmd {
-  margin: 0;
-}
-
-.slide hr {
-  margin: 12px 0;
-  border: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.slide .d-card p + p {
-  margin-top: 10px;
-}
-
-.slide .d-card .d-row h4,
-.slide .d-card .d-row p {
-  margin: 0;
-}
-
-/* Long repo names wrap instead of pushing the button out of the card. */
-.slide .d-card .d-row {
-  flex-wrap: wrap;
-}
-
-.slide .d-card .d-row > :first-child {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.slide .d-card .d-row.stack {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.slide .d-card .d-row.stack > :first-child {
-  flex: 0 1 auto;
-}
-
-.nobr {
-  white-space: nowrap;
-}
-
-.slide .d-card > small {
-  display: block;
-  margin-top: 4px;
-}
-
-.d-msg {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.d-msg p {
-  margin: 2px 0 0;
-}
-
-.d-main {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.d-avatar {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  padding: 8px;
-  border-radius: 50% !important;
-  background: var(--navy);
-}
-
-.d-avatar.photo {
-  padding: 0;
-  object-fit: cover;
-}
-
-.d-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 2px;
-  color: #fff;
-  font-size: 15px;
-}
-
-.d-head time {
-  color: var(--discord-muted);
-  font-size: 11px;
-}
-
-/* Sized in em so the badge keeps Discord's proportions to the username at every size. */
-.d-app {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.22em;
-  height: 1.25em;
-  padding: 0 0.34em 0 0.28em;
-  background: #5865f2;
-  color: #fff;
-  font: 700 0.8em/1.25em var(--font-body);
-  letter-spacing: 0.02em;
-  border-radius: 3px !important;
-}
-
-.d-app svg {
-  flex-shrink: 0;
-  width: 1em;
-  height: 0.75em;
-}
-
-.d-select {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 12px;
-  padding: 9px 12px;
-  background: #1e1f22;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--discord-muted);
-}
-
-.d-select i {
-  font-style: normal;
-  color: var(--discord-text);
-}
-
-.d-note {
-  color: var(--discord-muted);
-  font-size: 12px;
-}
-
-.d-thread h4 {
-  font-size: 14px;
-}
-
-.d-thread .d-link {
-  margin-left: 6px;
-  font-weight: 500;
-}
-
-.d-btn.wide {
-  flex: 1;
-  text-align: center;
-  padding: 9px 12px;
-}
-
-.d-btn.blurple {
-  background: #5865f2;
-}
-
-.d-modal {
-  background: var(--discord-card);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 16px 18px;
-}
-
-.d-modal-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-  color: #fff;
-  font-size: 17px;
-}
-
-.d-field {
-  margin-bottom: 10px;
-}
-
-.d-field label {
-  display: block;
-  margin-bottom: 4px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.d-field em {
-  font-style: normal;
-  color: #f23f42;
-}
-
-.d-input {
-  padding: 8px 12px;
-  background: #1e1f22;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 13.5px;
-  line-height: 1.4;
-}
-
-/* Long repo names and links wrap inside their message, like a chat app does. */
-.slide-body,
-.slide .d-card,
-.d-main,
-.d-modal,
-.gh {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-/* GitHub issue */
-
-.gh {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  padding: 16px 18px;
-  color: #e6edf3;
-  font-size: 13.5px;
-}
-
-.gh h4 {
-  margin: 0 0 8px;
-  font: 400 22px/1.2 var(--font-body);
-}
-
-.gh h4 span {
-  color: #8d96a0;
-}
-
-.gh-state {
-  display: inline-block;
-  margin-bottom: 14px;
-  padding: 3px 12px;
-  background: #238636;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.gh-box {
-  border: 1px solid #30363d;
-}
-
-.gh-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: #151b23;
-  border-bottom: 1px solid #30363d;
-  color: #8d96a0;
-  font-size: 12.5px;
-}
-
-.gh-bar b {
-  color: #e6edf3;
-}
-
-.gh-bar i {
-  padding: 0 6px;
-  border: 1px solid #30363d;
-  border-radius: 999px !important;
-  font-style: normal;
-  font-size: 11px;
-}
-
-.gh-body {
-  padding: 12px 14px;
-}
-
-.gh-body h5 {
-  margin: 10px 0 2px;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.gh-body h5:first-child {
-  margin-top: 0;
-}
-
-.gh-body p {
-  margin: 0;
-}
-
-.gh-body hr {
-  margin: 12px 0 8px;
-  border-top-color: #30363d;
-}
-
-.gh-body small {
-  font-size: 11px;
-  color: #8d96a0;
-}
-
-.gh-body u {
-  color: #4493f8;
-}
-
-.gh-labels {
-  margin-top: 12px;
-  color: #8d96a0;
-  font-size: 12.5px;
-}
-
-.gh-labels b {
-  color: #e6edf3;
-}
-
-.gh-label {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 0 8px;
-  border-radius: 999px !important;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.gh-label.crash {
-  background: #30363d;
-  color: #e6edf3;
-}
-
-.gh-label.bug {
-  background: #4a1d22;
-  color: #ffa198;
-  border: 1px solid #8e1519;
-}
-
-/* Small phones: scale the chat down the way a mobile app would. */
-@media (max-width: 480px) {
-  .slide-body {
-    gap: 8px;
-    padding: 14px 12px 12px;
-  }
-  .slide figcaption {
-    gap: 10px;
-    padding: 12px;
-    font-size: 13px;
-  }
-  .d-msg {
-    gap: 8px;
-  }
-  .d-avatar {
-    width: 28px;
-    height: 28px;
-    padding: 6px;
-  }
-  .d-head {
-    font-size: 14px;
-  }
-  .carousel .discord {
-    font-size: 13.5px;
-  }
-  .slide .d-card {
-    padding: 10px 12px;
-  }
-  .d-card h4 {
-    font-size: 14.5px;
-  }
-  .d-btn {
-    font-size: 12px;
-    padding: 4px 10px;
-  }
-  .d-select {
-    padding: 8px 10px;
-  }
-  .d-modal {
-    padding: 12px;
-  }
-  .d-modal-head {
-    margin-bottom: 10px;
-    font-size: 15px;
-  }
-  .d-input {
-    padding: 7px 10px;
-    font-size: 12.5px;
-  }
-  .gh {
-    padding: 12px;
-    font-size: 12.5px;
-  }
-  .gh h4 {
-    font-size: 18px;
-  }
-  .gh-body {
-    padding: 10px 12px;
-  }
-  .gh-body h5 {
-    font-size: 14px;
-  }
-  .car-controls {
-    margin-right: 0;
-  }
-}
-
 .d-mention {
   background: rgba(88, 101, 242, 0.3);
   color: #c9cdfb;
   padding: 0 3px;
 }
 
-.d-link {
-  color: #00a8fc;
-}
-
-.d-gap {
-  margin-top: 14px;
-}
-
-.d-btn.off {
-  opacity: 0.45;
+@media (max-width: 480px) {
+  .d-card h4 {
+    font-size: 14.5px;
+  }
 }
 
 /* Ticker ------------------------------------------------------------------ */
@@ -1626,12 +1354,8 @@ h2 em {
 
 @media (prefers-reduced-motion: reduce) {
   .ticker-track,
-  .hero-copy > *,
-  .carousel {
+  .hero-copy > * {
     animation: none;
-  }
-  .slide {
-    transition: none;
   }
   html {
     scroll-behavior: auto;
@@ -1659,6 +1383,14 @@ section::after {
 
 .section-head {
   margin-bottom: 48px;
+}
+
+.section-head h2 {
+  text-wrap: balance;
+}
+
+.section-head h2 + .lede {
+  margin: 20px 0 0;
 }
 
 .index {
@@ -2972,178 +2704,13 @@ footer {
   }
 }
 
-/* Breathing haze (home hero): soft blobs that drift, stretch and merge like a slow fluid. Each runs its own long loop so the
-   whole never repeats in sync. Only transform animates. */
-.hero-bg.breathe {
-  isolation: isolate;
-  background-image: none;
-}
-
-.haze {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  mask-image: linear-gradient(to bottom, #000 45%, transparent 88%);
-}
-
-.blob {
-  position: absolute;
-  display: block;
-  will-change: transform;
-  background: radial-gradient(closest-side, var(--c), transparent);
-  animation: var(--a) var(--d) ease-in-out var(--o, 0s) infinite;
-}
-
-.b1 {
-  --c: rgba(63, 82, 217, 0.75);
-  --a: drift-1;
-  --d: 23s;
-  --o: -11s;
-  left: 58%;
-  top: -34%;
-  width: 60%;
-  height: 104%;
-}
-
-.b2 {
-  --c: rgba(132, 151, 250, 0.5);
-  --a: drift-2;
-  --d: 19s;
-  --o: -7s;
-  left: 52%;
-  top: -6%;
-  width: 36%;
-  height: 54%;
-}
-
-.b3 {
-  --c: rgba(132, 151, 250, 0.4);
-  --a: drift-3;
-  --d: 29s;
-  --o: -12s;
-  left: 76%;
-  top: 40%;
-  width: 40%;
-  height: 76%;
-}
-
-.b4 {
-  --c: rgba(63, 82, 217, 0.3);
-  --a: drift-4;
-  --d: 17s;
-  --o: -4s;
-  left: 32%;
-  top: -14%;
-  width: 38%;
-  height: 64%;
-}
-
-.b5 {
-  --c: rgba(132, 151, 250, 0.14);
-  --a: drift-5;
-  --d: 31s;
-  --o: -18s;
-  left: 8%;
-  top: 4%;
-  width: 40%;
-  height: 64%;
-}
-
-@keyframes drift-1 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1, 1) rotate(0deg);
-  }
-  30% {
-    transform: translate(-12%, 8%) scale(1.12, 0.92) rotate(8deg);
-  }
-  60% {
-    transform: translate(-4%, 16%) scale(0.94, 1.1) rotate(-6deg);
-  }
-  80% {
-    transform: translate(6%, 4%) scale(1.06, 1) rotate(3deg);
-  }
-}
-
-@keyframes drift-2 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1, 1) rotate(0deg);
-  }
-  25% {
-    transform: translate(18%, 20%) scale(1.2, 0.85) rotate(-14deg);
-  }
-  55% {
-    transform: translate(-16%, 34%) scale(0.9, 1.2) rotate(10deg);
-  }
-  80% {
-    transform: translate(-6%, 8%) scale(1.1, 1) rotate(-4deg);
-  }
-}
-
-@keyframes drift-3 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1, 1) rotate(0deg);
-  }
-  35% {
-    transform: translate(-22%, -14%) scale(1.15, 0.9) rotate(12deg);
-  }
-  70% {
-    transform: translate(-8%, -26%) scale(0.92, 1.14) rotate(-8deg);
-  }
-}
-
-@keyframes drift-4 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1, 1) rotate(0deg);
-  }
-  33% {
-    transform: translate(24%, 12%) scale(1.18, 0.9) rotate(-10deg);
-  }
-  66% {
-    transform: translate(10%, -10%) scale(0.9, 1.15) rotate(12deg);
-  }
-}
-
-@keyframes drift-5 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1, 1);
-  }
-  40% {
-    transform: translate(26%, 14%) scale(1.2, 0.9);
-  }
-  75% {
-    transform: translate(8%, 30%) scale(0.92, 1.12);
-  }
-}
-
-/* Halo shader (home hero). When WebGL is running it replaces the CSS haze and grain. */
-.halo {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  width: 100%;
-  height: 100%;
-  display: block;
-  pointer-events: none;
-}
-
-.hero-bg.gl .haze,
-.hero-bg.gl::before {
-  display: none;
-}
-
 /* Phones: the inner-page heroes sit quieter, with less grain and a dimmer haze behind the copy. */
 @media (max-width: 760px) {
-  .hero-bg:not(.breathe)::before {
+  .hero-bg::before {
     opacity: 0.45;
   }
 
-  .hero-bg:not(.breathe)::after {
+  .hero-bg::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -3151,7 +2718,7 @@ footer {
     pointer-events: none;
   }
 
-  .hero-bg:not(.breathe) > .wrap {
+  .hero-bg > .wrap {
     position: relative;
     z-index: 1;
   }
