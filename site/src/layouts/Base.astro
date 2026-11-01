@@ -172,8 +172,10 @@ const structuredData = [...schema, ...(breadcrumb ? [breadcrumb] : [])].map((ite
         </button>
       </div>
 
-      <!-- Desktop dropdown panels. Hidden below 761px, where the mobile menu takes over. -->
-      <div class="mega" id="mega-product" hidden>
+      <!-- Desktop dropdown: one shared viewport whose height and content animate between panels. Hidden below 761px. -->
+      <div class="mega" hidden>
+        <div class="mega-clip">
+      <div class="mega-panel" id="mega-product">
         <div class="wrap mega-inner">
           <div class="mega-main">
             <p class="mega-label">Product</p>
@@ -195,7 +197,7 @@ const structuredData = [...schema, ...(breadcrumb ? [breadcrumb] : [])].map((ite
         </div>
       </div>
 
-      <div class="mega" id="mega-resources" hidden>
+      <div class="mega-panel" id="mega-resources">
         <div class="wrap mega-inner">
           <div class="mega-main">
             <p class="mega-label">Resources</p>
@@ -215,6 +217,8 @@ const structuredData = [...schema, ...(breadcrumb ? [breadcrumb] : [])].map((ite
               <em>Read the docs →</em>
             </a>
           </aside>
+        </div>
+      </div>
         </div>
       </div>
     </header>
@@ -305,19 +309,74 @@ const structuredData = [...schema, ...(breadcrumb ? [breadcrumb] : [])].map((ite
       const triggers = Array.from(document.querySelectorAll<HTMLButtonElement>('.nav-trigger'));
       const hoverable = window.matchMedia('(hover: hover)');
 
-      if (header && triggers.length) {
+      const mega = document.querySelector<HTMLElement>('.mega');
+      const clip = document.querySelector<HTMLElement>('.mega-clip');
+
+      if (header && mega && clip && triggers.length) {
         let closeTimer: number | undefined;
+        let hideTimer: number | undefined;
+        let active: HTMLButtonElement | undefined;
 
         const panelOf = (t: HTMLButtonElement) => document.getElementById(t.getAttribute('aria-controls')!)!;
+        const fit = () => active && (clip.style.height = `${panelOf(active).offsetHeight}px`);
 
-        const show = (active?: HTMLButtonElement) => {
+        // Moving between dropdowns slides the old content out and the new in, from the side the
+        // trigger sits on, while the shared panel grows or shrinks to fit. Opening from closed fades in.
+        const show = (next?: HTMLButtonElement) => {
           clearTimeout(closeTimer);
-          for (const t of triggers) {
-            const on = t === active;
-            t.setAttribute('aria-expanded', String(on));
-            panelOf(t).hidden = !on;
+          if (next === active) return;
+          const prev = active;
+          active = next;
+
+          for (const t of triggers) t.setAttribute('aria-expanded', String(t === next));
+          header.classList.toggle('has-mega', !!next);
+
+          if (!next) {
+            const old = panelOf(prev!);
+            mega.classList.remove('is-open');
+            hideTimer = window.setTimeout(() => {
+              mega.hidden = true;
+              old.classList.remove('is-active');
+            }, 160);
+            return;
           }
-          header.classList.toggle('has-mega', !!active);
+
+          clearTimeout(hideTimer);
+          const panel = panelOf(next);
+          for (const p of clip.querySelectorAll<HTMLElement>('.mega-panel')) {
+            for (const a of p.getAnimations({ subtree: true })) a.cancel();
+            p.classList.remove('is-leaving');
+            if (p !== panel && p !== (prev && panelOf(prev))) p.classList.remove('is-active');
+          }
+
+          if (!prev) {
+            mega.hidden = false;
+            panel.classList.add('is-active');
+            clip.style.transition = 'none';
+            fit();
+            void mega.offsetWidth;
+            clip.style.transition = '';
+            mega.classList.add('is-open');
+            return;
+          }
+
+          // Swipe by one content width; the clip on .mega-clip hides everything past the column.
+          const dir = triggers.indexOf(next) > triggers.indexOf(prev) ? 1 : -1;
+          const old = panelOf(prev);
+          const swipe = (el: HTMLElement, from: string, to: string) =>
+            el.querySelector<HTMLElement>('.mega-inner')!.animate(
+              [{ transform: `translateX(${from})` }, { transform: `translateX(${to})` }],
+              { duration: 320, easing: getComputedStyle(document.documentElement).getPropertyValue('--ease').trim() || 'ease', fill: 'both' }
+            );
+
+          old.classList.remove('is-active');
+          old.classList.add('is-leaving');
+          panel.classList.add('is-active');
+          fit();
+          // Lay the incoming panel out before animating so its first frame is at the start position.
+          void panel.offsetWidth;
+          swipe(old, '0', `${-dir * 100}%`).onfinish = () => old.classList.remove('is-leaving');
+          swipe(panel, `${dir * 100}%`, '0');
         };
 
         const scheduleClose = () => {
@@ -326,7 +385,7 @@ const structuredData = [...schema, ...(breadcrumb ? [breadcrumb] : [])].map((ite
         };
 
         for (const t of triggers) {
-          t.addEventListener('click', () => show(t.getAttribute('aria-expanded') === 'true' ? undefined : t));
+          t.addEventListener('click', () => show(active === t ? undefined : t));
           t.addEventListener('mouseenter', () => hoverable.matches && show(t));
           panelOf(t).addEventListener('click', (e) => {
             if ((e.target as HTMLElement).closest('a')) show();
@@ -334,16 +393,15 @@ const structuredData = [...schema, ...(breadcrumb ? [breadcrumb] : [])].map((ite
         }
         header.addEventListener('mouseenter', () => clearTimeout(closeTimer));
         header.addEventListener('mouseleave', () => hoverable.matches && scheduleClose());
+        window.addEventListener('resize', fit);
         document.addEventListener('click', (e) => {
           if (!header.contains(e.target as Node)) show();
         });
         document.addEventListener('keydown', (e) => {
-          if (e.key !== 'Escape') return;
-          const open = triggers.find((t) => t.getAttribute('aria-expanded') === 'true');
-          if (open) {
-            show();
-            open.focus();
-          }
+          if (e.key !== 'Escape' || !active) return;
+          const open = active;
+          show();
+          open.focus();
         });
       }
 
