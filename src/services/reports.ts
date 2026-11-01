@@ -364,6 +364,9 @@ export async function announce(env: Bindings, guild: GuildRow | null, report: Re
   if (!sendsDm && !updatesChannel) return;
 
   const picture = await reportPicture(env, guild, report);
+  // Text with the issue as a button beside it, so every update links straight to GitHub.
+  const body = (content: string) =>
+    report.issue_url ? section(content, makeLinkButton(report.issue_url, 'View issue')) : text(content);
 
   if (updatesChannel) {
     if (event === 'published' || event === 'approved') {
@@ -377,11 +380,11 @@ export async function announce(env: Bindings, guild: GuildRow | null, report: Re
       );
     } else {
       const ping = event === 'fixed' ? [report.reporter_id] : [];
-      tasks.push(sendChannelMessage(env, updatesChannel, [card([picture, text(copy.channel!)])], ping));
+      tasks.push(sendChannelMessage(env, updatesChannel, [card([picture, body(copy.channel!)])], ping));
     }
   }
   if (sendsDm) {
-    tasks.push(sendDirectMessage(env, report.reporter_id, [card([picture, text(copy.dm!)])]));
+    tasks.push(sendDirectMessage(env, report.reporter_id, [card([picture, body(copy.dm!)])]));
   }
 
   await Promise.allSettled(tasks);
