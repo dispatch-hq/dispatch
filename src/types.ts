@@ -27,6 +27,11 @@ export type Bindings = {
    * Unset means any active entitlement for this application counts as Premium.
    */
   PREMIUM_SKU_ID?: string;
+
+  /** The one Discord user allowed into /admin. Unset means nobody is. */
+  ADMIN_DISCORD_ID?: string;
+  /** OAuth2 client secret of the Discord application, for signing in to /admin. */
+  DISCORD_CLIENT_SECRET?: string;
 };
 
 export type AppEnv = {
@@ -131,4 +136,30 @@ export type StatusCountsRow = {
   read_at: number | null;
   discord_ok: number;
   claimed_at: number;
+};
+
+export type AdminServerRow = {
+  guild_id: string;
+  name: string;
+  icon: string | null;
+  member_count: number | null;
+  online_count: number | null;
+  owner_id: string | null;
+  owner: string | null;
+  details: string | null;
+  first_seen: number;
+  last_seen: number;
+  left_at: number | null;
+  refreshed_at: number | null;
+};
+
+/** A row of the server list, with what Dispatch itself knows about the server. */
+export type AdminServerSummary = Omit<AdminServerRow, 'owner' | 'details' | 'last_seen' | 'refreshed_at'> & {
+  owner_name: string | null;
+  owner_avatar: string | null;
+  vanity: string | null;
+  description: string | null;
+  reports: number;
+  repos: number;
+  configured: number;
 };

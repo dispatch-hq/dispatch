@@ -8,7 +8,8 @@
 	],
 
 	// Non-secret configuration. Secrets (DISCORD_TOKEN, GITHUB_CLIENT_SECRET,
-	// GITHUB_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET, STATE_SECRET) are set with
+	// GITHUB_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET, STATE_SECRET, DISCORD_CLIENT_SECRET,
+	// ADMIN_DISCORD_ID) are set with
 	// `wrangler secret put` — see docs/deployment.md.
 	"vars": {
 		"PUBLIC_URL": "https://dispatch.jakemackie.workers.dev",
@@ -39,7 +40,12 @@
 		"binding": "ASSETS",
 		// Unknown paths get the site's 404.html (built from site/src/pages/404.astro).
 		"not_found_handling": "404-page",
-		"run_worker_first": ["/", "/interactions", "/invite", "/github/*", "/files/*", "/cards/*", "/api/*"]
+		"run_worker_first": ["/", "/interactions", "/invite", "/github/*", "/files/*", "/cards/*", "/api/*", "/admin", "/admin/*"]
+	},
+
+	// Keeps the private server list current (see src/services/admin-servers.ts).
+	"triggers": {
+		"crons": ["0 * * * *"]
 	},
 
 	"d1_databases": [
@@ -60,6 +66,10 @@
 	"env": {
 		"beta": {
 			"name": "dispatch-beta",
+
+			"triggers": {
+				"crons": ["0 * * * *"]
+			},
 
 			"vars": {
 				"PUBLIC_URL": "https://dispatch-beta.jakemackie.workers.dev",

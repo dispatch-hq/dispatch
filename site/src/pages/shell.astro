@@ -17,7 +17,7 @@ import Base from '../layouts/Base.astro';
 </Base>
 
 <script>
-  // Repository picker search: filters the cards client-side.
+  // Picker search, on the repository and admin server lists: filters the cards client-side.
   const input = document.querySelector<HTMLInputElement>('[data-repo-search]');
   if (input) {
     const cards = [...document.querySelectorAll<HTMLElement>('[data-repo]')];
@@ -35,7 +35,7 @@ import Base from '../layouts/Base.astro';
         if (match) shown++;
       }
       if (count) {
-        const noun = total === 1 ? 'repository' : 'repositories';
+        const noun = total === 1 ? (count.dataset.singular ?? 'repository') : (count.dataset.plural ?? 'repositories');
         count.textContent = terms.length ? `${shown} of ${total} ${noun}` : `${total} ${noun}`;
       }
       if (empty) empty.hidden = shown > 0;
@@ -51,4 +51,43 @@ import Base from '../layouts/Base.astro';
       }
     });
   }
+
+  // Admin server list: "Create invite" spins while it works, then becomes a "Join server" link.
+  const INVITE_ERRORS: Record<string, string> = {
+    no_permission: 'No permission to invite',
+    gone: 'Bot left this server',
+  };
+
+  document.addEventListener('click', async (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-invite]');
+    if (!button || button.disabled) return;
+
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.innerHTML = '<span class="spinner" aria-hidden="true"></span>Creating…';
+
+    let result: { url?: string; error?: string } = {};
+    try {
+      const res = await fetch(button.dataset.invite!, { method: 'POST' });
+      result = await res.json();
+    } catch {
+      // Falls through to the retry below.
+    }
+    button.removeAttribute('aria-busy');
+
+    if (result.url) {
+      const link = document.createElement('a');
+      link.className = 'button small';
+      link.href = result.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'Join server';
+      button.replaceWith(link);
+      return;
+    }
+
+    const permanent = result.error ? INVITE_ERRORS[result.error] : undefined;
+    button.textContent = permanent ?? 'Failed, try again';
+    button.disabled = !!permanent;
+  });
 </script>

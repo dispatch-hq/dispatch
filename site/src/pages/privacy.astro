@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 
-const updated = 'October 29, 2026';
+const updated = 'November 2, 2026';
 ---
 
 <Base
@@ -37,6 +37,7 @@ const updated = 'October 29, 2026';
             <li><b>Server settings:</b> the Discord server ID, the channel and role IDs you choose (triage channel, updates channel, staff role, reward roles), labels, report types, cooldown, and the linked GitHub repositories (each one's ID, name and installation ID).</li>
             <li><b>Drafts:</b> if a member uses <b>Apps → Report bug</b> on a message, that message's text is held briefly so the form can be pre-filled. Drafts older than a day are ignored and swept on the next write.</li>
           </ul>
+          <p>For every server the bot is in, whether or not it has been configured, we also store the details Discord provides to the bot: the server's name, icon, description, member and online counts, settings, roles, emojis and stickers, and its owner's Discord user ID, username, display name and avatar. We also record when the bot joined and left.</p>
           <p>Dispatch does not read message content in general. It only sees a message's text when a member chooses to report that specific message.</p>
           <p>When an admin links a repository, they sign in with GitHub so Dispatch can confirm they have push access. The sign-in token is used once to list repositories and is not stored. Afterwards Dispatch uses short-lived installation tokens limited to the one repository an issue is filed in.</p>
           <p>If you subscribe to Dispatch Pro, Discord handles the payment. Discord tells Dispatch whether your server has an active subscription each time a command is used, and Dispatch does not receive or store payment details.</p>
@@ -49,7 +50,9 @@ const updated = 'October 29, 2026';
             <li>To run triage, post updates, send direct messages to reporters about their reports, and grant reward roles.</li>
             <li>To show members their own reports (<code>/issues</code>) and reporter statistics.</li>
             <li>To keep the service running and fix faults.</li>
+            <li>To let the Dispatch developer see which servers use the bot, on a private page only they can open.</li>
           </ul>
+          <p>Where a server's roles allow the bot to create invites, the developer can also use the bot to create a single-use invite to that server, which expires after an hour. It appears in the server's invite list and audit log.</p>
         </section>
 
         <section>
@@ -84,7 +87,7 @@ const updated = 'October 29, 2026';
 
         <section>
           <h2>Cookies and analytics</h2>
-          <p>This website does not set cookies and does not use analytics or advertising trackers.</p>
+          <p>This website does not set cookies for visitors and does not use analytics or advertising trackers. The only cookies are the sign-in cookies on the developer's private page.</p>
         </section>
 
         <section>

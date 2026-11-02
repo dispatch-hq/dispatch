@@ -2,7 +2,9 @@ import { Hono, type Handler } from 'hono';
 import { verifyCard } from './cards';
 import * as handlers from './commands';
 import { factory } from './init';
-import type { AppEnv } from './types';
+import { syncServers } from './services/admin-servers';
+import type { AppEnv, Bindings } from './types';
+import { adminRoutes } from './web/admin';
 import { githubRoutes } from './web/github';
 import { statusRoutes } from './web/status';
 
@@ -37,6 +39,9 @@ app.route('/github', githubRoutes);
 
 // Live numbers for the site's /status page.
 app.route('/api', statusRoutes);
+
+// The private server list (see web/admin.ts).
+app.route('/admin', adminRoutes);
 
 // Rehosted report attachments (see services/attachments.ts).
 app.get('/files/:key{reports/.+}', async (c) => {
@@ -78,4 +83,10 @@ app.get('/cards/:file{.+\\.png}', async (c) => {
   return response;
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  // The hourly sync behind the private server list.
+  scheduled(_controller, env, ctx) {
+    ctx.waitUntil(syncServers(env).catch((error) => console.error('admin: server sync failed', error)));
+  },
+} satisfies ExportedHandler<Bindings>;
