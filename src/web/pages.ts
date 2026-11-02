@@ -1,6 +1,7 @@
 import { html, raw } from 'hono/html';
 import type { HtmlEscapedString } from 'hono/utils/html';
-import type { Bindings } from '../types';
+import type { GuildChannel, GuildDetails } from '../services/admin-servers';
+import type { AdminServerRow, AdminServerSummary, Bindings } from '../types';
 
 type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 
@@ -163,6 +164,194 @@ export function repoPickerPage(opts: { login: string; repos: RepoChoice[]; insta
         </a>
         <p class="command-note">Only repositories where the app is installed and you have write access are shown.</p>
       </div>
+    </div>`,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Admin: servers                               */
+/* -------------------------------------------------------------------------- */
+
+const CDN = 'https://cdn.discordapp.com';
+
+const count = (value: number | null | undefined) => (value === null || value === undefined ? '–' : value.toLocaleString('en-US'));
+const date = (ms: number | null) => (ms === null ? '–' : new Date(ms).toISOString().slice(0, 10));
+const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
+function serverIcon(id: string, icon: string | null, name: string): Html {
+  return icon
+    ? html`<img class="server-icon" src="${CDN}/icons/${id}/${icon}.webp?size=96" alt="" width="48" height="48" loading="lazy" />`
+    : html`<span class="server-icon none" aria-hidden="true">${name.slice(0, 1).toUpperCase()}</span>`;
+}
+
+function ownerAvatar(id: string, avatar: string | null): Html {
+  return avatar ? html`<img class="owner-avatar" src="${CDN}/avatars/${id}/${avatar}.webp?size=48" alt="" width="20" height="20" loading="lazy" />` : html``;
+}
+
+/** Replaced by a "Join server" link once the invite exists (see site/src/pages/shell.astro). */
+function inviteButton(guildId: string, left: boolean): Html {
+  return left ? html`` : html`<button class="button small ghost" type="button" data-invite="/admin/servers/${guildId}/invite">Create invite</button>`;
+}
+
+function serverRow(server: AdminServerSummary): Html {
+  const left = server.left_at !== null;
+  const search = [server.name, server.guild_id, server.owner_name, server.owner_id, server.vanity, server.description]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return html`<article class="server-row" data-repo data-search="${search}">
+    ${serverIcon(server.guild_id, server.icon, server.name)}
+    <div class="server-main">
+      <div class="repo-head">
+        <a class="repo-name" href="/admin/servers/${server.guild_id}">${server.name}</a>
+        ${left ? html`<span class="chip">Left ${date(server.left_at)}</span>` : ''}
+        ${server.configured ? html`<span class="chip">Configured</span>` : ''}
+      </div>
+      <p class="server-meta">
+        <span>${count(server.member_count)} members</span>
+        <span>${count(server.online_count)} online</span>
+        <span>${plural(server.reports, 'report')}</span>
+        <span>${plural(server.repos, 'repo')}</span>
+        <span>Added ${date(server.first_seen)}</span>
+      </p>
+      <p class="server-meta">
+        ${server.owner_id
+          ? html`<span class="server-owner">${ownerAvatar(server.owner_id, server.owner_avatar)}${server.owner_name ?? server.owner_id}</span>`
+          : html`<span>Owner not read yet</span>`}
+        ${server.vanity ? html`<a href="https://discord.gg/${server.vanity}" target="_blank" rel="noopener noreferrer">discord.gg/${server.vanity}</a>` : ''}
+      </p>
+    </div>
+    <div class="server-actions">${inviteButton(server.guild_id, left)}</div>
+  </article>`;
+}
+
+export function serverListPage(servers: AdminServerSummary[], stale: boolean): Page {
+  const present = servers.filter((server) => server.left_at === null).length;
+
+  return {
+    title: 'Servers',
+    body: html`<div class="picker admin">
+      <div class="picker-head">
+        <span class="index">Admin</span>
+        <h1 class="panel-title">Servers.</h1>
+        <p class="lede">
+          Dispatch is in <strong>${plural(present, 'server')}</strong>. Owners and details fill in over the hourly sync, a few servers at a time.
+        </p>
+      </div>
+      ${stale ? html`<p class="admin-warning">Discord couldn't be read just now, so this is the last stored list.</p>` : ''}
+      <div class="repo-tools">
+        <label class="search">
+          ${searchIcon}
+          <input type="search" placeholder="Search name, ID, owner…" aria-label="Search servers" autocomplete="off" data-repo-search />
+        </label>
+        <span class="repo-count" data-repo-count data-total="${servers.length}" data-singular="server" data-plural="servers">${plural(servers.length, 'server')}</span>
+      </div>
+      <div class="server-list">${servers.map(serverRow)}</div>
+      <p class="repo-empty" data-repo-empty ${servers.length ? raw('hidden') : ''}>No servers match your search.</p>
+    </div>`,
+  };
+}
+
+const CHANNEL_TYPES: Record<number, string> = {
+  0: 'Text',
+  2: 'Voice',
+  4: 'Category',
+  5: 'Announcement',
+  13: 'Stage',
+  15: 'Forum',
+  16: 'Media',
+};
+
+const VERIFICATION = ['None', 'Low', 'Medium', 'High', 'Very high'];
+const NSFW = ['Default', 'Explicit', 'Safe', 'Age restricted'];
+
+function fact(label: string, value: unknown): Html {
+  return html`<div class="server-fact">
+    <dt>${label}</dt>
+    <dd>${value === null || value === undefined || value === '' ? '–' : value}</dd>
+  </div>`;
+}
+
+function namedList(title: string, items: { name?: string | null }[]): Html {
+  if (!items.length) return html``;
+  return html`<section class="server-section">
+    <h2>${title} <span class="repo-count">${items.length}</span></h2>
+    <p class="server-tags">${items.map((item) => html`<span class="chip">${item.name ?? 'Unnamed'}</span>`)}</p>
+  </section>`;
+}
+
+const inviteLink = (url: string, label: string) =>
+  html`<a class="button small ghost" href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+
+export function serverDetailPage(opts: {
+  row: AdminServerRow;
+  details: GuildDetails | null;
+  channels: GuildChannel[] | null;
+  widgetInvite: string | null;
+}): Page {
+  const { row, details, channels, widgetInvite } = opts;
+  const left = row.left_at !== null;
+  const owner = row.owner ? (JSON.parse(row.owner) as { username?: string; global_name?: string | null; avatar?: string | null }) : null;
+  const features = (details?.features as string[] | undefined) ?? [];
+  const list = (key: string) => (details?.[key] as { name?: string | null }[] | undefined) ?? [];
+
+  return {
+    title: row.name,
+    body: html`<div class="picker admin">
+      <a class="server-back" href="/admin/servers">← All servers</a>
+      <div class="server-title">
+        ${serverIcon(row.guild_id, row.icon, row.name)}
+        <div>
+          <h1 class="panel-title">${row.name}</h1>
+          <p class="lede">${details?.description ?? ''}</p>
+        </div>
+      </div>
+
+      <div class="server-invites">
+        ${inviteButton(row.guild_id, left)}
+        ${details?.vanity_url_code ? inviteLink(`https://discord.gg/${details.vanity_url_code}`, `discord.gg/${details.vanity_url_code}`) : ''}
+        ${widgetInvite ? inviteLink(widgetInvite, 'Widget invite') : ''}
+      </div>
+
+      <dl class="server-facts">
+        ${fact('Server ID', row.guild_id)}
+        ${fact('Members', count(row.member_count))}
+        ${fact('Online', count(row.online_count))}
+        ${fact('Owner', owner?.username ?? null)}
+        ${fact('Owner name', owner?.global_name ?? null)}
+        ${fact('Owner ID', row.owner_id)}
+        ${fact('Added', date(row.first_seen))}
+        ${fact('Left', date(row.left_at))}
+        ${fact('Details read', row.refreshed_at === null ? null : new Date(row.refreshed_at).toISOString())}
+        ${fact('Boost tier', details?.premium_tier)}
+        ${fact('Boosts', details?.premium_subscription_count)}
+        ${fact('Locale', details?.preferred_locale)}
+        ${fact('Verification', VERIFICATION[details?.verification_level as number])}
+        ${fact('Age rating', NSFW[details?.nsfw_level as number])}
+        ${fact('Two-factor for mods', details ? (details.mfa_level ? 'Required' : 'Not required') : null)}
+      </dl>
+
+      ${features.length
+        ? html`<section class="server-section">
+            <h2>Features</h2>
+            <p class="server-tags">${features.map((feature) => html`<span class="chip">${feature}</span>`)}</p>
+          </section>`
+        : ''}
+      ${channels
+        ? html`<section class="server-section">
+            <h2>Channels the bot can see <span class="repo-count">${channels.length}</span></h2>
+            <p class="server-tags">
+              ${channels.map((channel) => html`<span class="chip">${channel.name} · ${CHANNEL_TYPES[channel.type] ?? channel.type}</span>`)}
+            </p>
+          </section>`
+        : ''}
+      ${namedList('Roles', list('roles'))} ${namedList('Emojis', list('emojis'))} ${namedList('Stickers', list('stickers'))}
+
+      <details class="server-raw">
+        <summary>Everything Discord returned</summary>
+        <pre>${JSON.stringify({ guild: details, owner }, null, 2)}</pre>
+      </details>
     </div>`,
   };
 }

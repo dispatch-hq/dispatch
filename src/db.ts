@@ -1,4 +1,6 @@
 import type {
+  AdminServerRow,
+  AdminServerSummary,
   Attachment,
   CannedReply,
   GuildRepo,
@@ -637,4 +639,101 @@ export async function saveStatusCounts(
 
 export async function setStatusDiscordOk(db: D1Database, ok: boolean) {
   await db.prepare(`UPDATE status_counts SET discord_ok = ? WHERE id = 1`).bind(ok ? 1 : 0).run();
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Admin: servers                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Records the servers Discord just listed. With a complete list, any server not
+ * in it has removed the bot; one that comes back has its `left_at` cleared.
+ */
+export async function saveServerList(
+  db: D1Database,
+  guilds: { id: string; name: string; icon: string | null; approximate_member_count?: number; approximate_presence_count?: number }[],
+  now: number,
+  complete: boolean
+) {
+  const upsert = db.prepare(
+    `INSERT INTO admin_servers (guild_id, name, icon, member_count, online_count, first_seen, last_seen)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
+     ON CONFLICT (guild_id) DO UPDATE SET
+       name = excluded.name,
+       icon = excluded.icon,
+       member_count = excluded.member_count,
+       online_count = excluded.online_count,
+       last_seen = excluded.last_seen,
+       left_at = NULL`
+  );
+  const statements = guilds.map((guild) =>
+    upsert.bind(guild.id, guild.name, guild.icon, guild.approximate_member_count ?? null, guild.approximate_presence_count ?? null, now)
+  );
+  if (complete) {
+    statements.push(db.prepare(`UPDATE admin_servers SET left_at = ?1 WHERE left_at IS NULL AND last_seen < ?1`).bind(now));
+  }
+  if (statements.length) await db.batch(statements);
+}
+
+export async function listAdminServers(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT s.guild_id, s.name, s.icon, s.member_count, s.online_count, s.owner_id, s.first_seen, s.left_at,
+              json_extract(s.owner, '$.username') AS owner_name,
+              json_extract(s.owner, '$.avatar') AS owner_avatar,
+              json_extract(s.details, '$.vanity_url_code') AS vanity,
+              json_extract(s.details, '$.description') AS description,
+              (SELECT COUNT(*) FROM reports r WHERE r.guild_id = s.guild_id) AS reports,
+              (SELECT COUNT(*) FROM guild_repos gr WHERE gr.guild_id = s.guild_id) AS repos,
+              EXISTS (SELECT 1 FROM guilds g WHERE g.guild_id = s.guild_id) AS configured
+       FROM admin_servers s
+       ORDER BY s.left_at IS NOT NULL, s.member_count DESC, s.name COLLATE NOCASE`
+    )
+    .all<AdminServerSummary>();
+  return results;
+}
+
+export function getAdminServer(db: D1Database, guildId: string) {
+  return db.prepare(`SELECT * FROM admin_servers WHERE guild_id = ?`).bind(guildId).first<AdminServerRow>();
+}
+
+/** Servers the bot is still in, those never read first and then the longest since. */
+export async function getStaleAdminServers(db: D1Database, limit: number) {
+  const { results } = await db
+    .prepare(
+      `SELECT guild_id FROM admin_servers WHERE left_at IS NULL
+       ORDER BY refreshed_at IS NOT NULL, refreshed_at ASC LIMIT ?`
+    )
+    .bind(limit)
+    .all<{ guild_id: string }>();
+  return results.map((row) => row.guild_id);
+}
+
+export async function saveAdminServerDetails(
+  db: D1Database,
+  server: {
+    guildId: string;
+    name: string;
+    icon: string | null;
+    memberCount: number | null;
+    onlineCount: number | null;
+    ownerId: string;
+    owner: string | null;
+    details: string;
+    at: number;
+  }
+) {
+  await db
+    .prepare(
+      `UPDATE admin_servers SET name = ?, icon = ?, member_count = ?, online_count = ?, owner_id = ?,
+         owner = COALESCE(?, owner), details = ?, refreshed_at = ?
+       WHERE guild_id = ?`
+    )
+    .bind(server.name, server.icon, server.memberCount, server.onlineCount, server.ownerId, server.owner, server.details, server.at, server.guildId)
+    .run();
+}
+
+/** A read that failed still moves the server to the back of the queue, so it can't block the others. */
+export async function markAdminServerRefreshed(db: D1Database, guildId: string, at: number) {
+  await db.prepare(`UPDATE admin_servers SET refreshed_at = ? WHERE guild_id = ?`).bind(at, guildId).run();
 }

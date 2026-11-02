@@ -14,6 +14,8 @@ Dispatch stores its state in **Cloudflare D1** (serverless SQLite), bound as `DB
 | `report_votes` | Upvote | One row per member per report. `reports.votes` is the count, recomputed on every change so cards can draw it without a join. |
 | `canned_replies` | Saved reply | A staff reply offered on *Reject* and *Request info*. Names are unique per server, ignoring case. |
 | `muted_reporters` | Muted member | Can't report or vote in that server. |
+| `status_counts` | (single row) | Server and member counts behind `/api/status`. |
+| `admin_servers` | Server the bot has been in | What the private `/admin/servers` page shows: the guild and owner objects as JSON, when the bot was first and last seen, and when it left. Written by the hourly sync and when a page opens. |
 
 Report status lifecycle:
 

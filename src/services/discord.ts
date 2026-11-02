@@ -23,6 +23,50 @@ async function failed(label: string, res: { status: number; text(): Promise<stri
   return false;
 }
 
+const DISCORD_API = 'https://discord.com/api/v10';
+const GUILDS_PER_PAGE = 200;
+/** Stops a runaway loop; 45 pages is 9,000 servers, and leaves room for D1 in the free plan's 50 subrequests. */
+const MAX_GUILD_PAGES = 45;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export type BotGuild = {
+  id: string;
+  name: string;
+  icon: string | null;
+  approximate_member_count?: number;
+  approximate_presence_count?: number;
+};
+
+/** `complete` is false if the page cap cut the list short, so a server missing from it may still have the bot. */
+export type BotGuildList = { guilds: BotGuild[]; pages: number; complete: boolean };
+
+/** Every server the bot is in. A 429 still means Discord answered, so it's `limited` rather than `down`. */
+export async function listBotGuilds(env: Bindings): Promise<BotGuildList | 'limited' | 'down'> {
+  const guilds: BotGuild[] = [];
+  let after = '';
+
+  for (let page = 1; page <= MAX_GUILD_PAGES; page++) {
+    const url = `${DISCORD_API}/users/@me/guilds?with_counts=true&limit=${GUILDS_PER_PAGE}${after && `&after=${after}`}`;
+    const res = await fetch(url, { headers: { authorization: `Bot ${env.DISCORD_TOKEN}` } });
+    if (!res.ok) {
+      console.warn(`discord: reading the server list failed (${res.status})`);
+      return res.status === 429 ? 'limited' : 'down';
+    }
+
+    const batch = (await res.json()) as BotGuild[];
+    guilds.push(...batch);
+    if (batch.length < GUILDS_PER_PAGE) return { guilds, pages: page, complete: true };
+    after = batch[batch.length - 1]!.id;
+
+    if (res.headers.get('x-ratelimit-remaining') === '0') {
+      await sleep(Number(res.headers.get('x-ratelimit-reset-after') ?? 1) * 1000);
+    }
+  }
+
+  return { guilds, pages: MAX_GUILD_PAGES, complete: false };
+}
+
 export async function sendChannelMessage(
   env: Bindings,
   channelId: string,

@@ -9,6 +9,10 @@ STATE_SECRET=
 # Paste the PEM on one line with literal \n between lines, or wrap in quotes.
 GITHUB_PRIVATE_KEY=
 
+# Optional: the private server list at /admin stays hidden until both are set.
+ADMIN_DISCORD_ID=
+DISCORD_CLIENT_SECRET=
+
 # Used by `npm run beta:register`
 DISCORD_APPLICATION_ID=
 # Optional: register commands to one server for instant updates

@@ -12,7 +12,12 @@ Dispatch is a single Cloudflare Worker. Discord and GitHub both reach it over HT
 | `GET /` | Anyone | Landing site (static assets from `site/`) |
 | `GET /invite` | Anyone | Redirects to Discord's *Add to Discord* authorize page for this environment |
 | `GET /api/status` | The `/status` page | Server/member counts plus database and Discord health (counts stored in D1 and refreshed every 10 minutes) |
-| `GET /shell/` | The Worker | Hidden site frame that the GitHub sign-in pages are rendered into |
+| `GET /shell/` | The Worker | Hidden site frame that the GitHub sign-in and admin pages are rendered into |
+| `GET /admin/login` | You | Starts Discord sign-in for the private server list. Bookmark this one: every other `/admin` path is the site's 404 until you're signed in |
+| `GET /admin/callback` | Discord | Sign-in redirect |
+| `GET /admin/servers`, `GET /admin/servers/:id` | `ADMIN_DISCORD_ID` only | Searchable server list and each server's details |
+| `POST /admin/servers/:id/invite` | `ADMIN_DISCORD_ID` only | Creates a single-use invite that lasts an hour |
+| Hourly cron | Cloudflare | Records joins and leaves, and reads details for the stalest servers (see `src/services/admin-servers.ts`) |
 
 Below, `PUBLIC_URL` is the Worker's public origin, e.g. `https://dispatch.example.workers.dev`. Repeat each step for the **beta** environment (`--env beta`) if you use one.
 
@@ -75,7 +80,20 @@ npx wrangler secret put STATE_SECRET            # any long random string
 npx wrangler secret put GITHUB_PRIVATE_KEY < dispatch.private-key.pem
 ```
 
-`STATE_SECRET` signs the short-lived links used while connecting a repository. Rotating it only invalidates links currently in flight.
+`STATE_SECRET` signs the short-lived links used while connecting a repository, and the admin sign-in session. Rotating it only invalidates links currently in flight and signs you out.
+
+### Admin server list (optional)
+
+`/admin` stays hidden and unusable until both of these are set:
+
+```sh
+npx wrangler secret put ADMIN_DISCORD_ID        # your Discord user ID
+npx wrangler secret put DISCORD_CLIENT_SECRET   # Developer Portal → OAuth2 → Client Secret
+```
+
+In the Developer Portal, under **OAuth2 → Redirects**, add `PUBLIC_URL/admin/callback`. Then open `PUBLIC_URL/admin/login`.
+
+*Create invite* only works where the server's roles give the bot *Create Invite*, as the bot doesn't ask for it. Each invite is single-use, lasts an hour, and shows in that server's audit log and invite list.
 
 ## 5. Deploy and register commands
 
