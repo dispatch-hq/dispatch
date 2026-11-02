@@ -3,6 +3,7 @@ import type {
   AdminServerSummary,
   Attachment,
   CannedReply,
+  CommandLogEntry,
   GuildRepo,
   GuildRow,
   Provider,
@@ -685,7 +686,8 @@ export async function listAdminServers(db: D1Database) {
               json_extract(s.details, '$.description') AS description,
               (SELECT COUNT(*) FROM reports r WHERE r.guild_id = s.guild_id) AS reports,
               (SELECT COUNT(*) FROM guild_repos gr WHERE gr.guild_id = s.guild_id) AS repos,
-              EXISTS (SELECT 1 FROM guilds g WHERE g.guild_id = s.guild_id) AS configured
+              EXISTS (SELECT 1 FROM guilds g WHERE g.guild_id = s.guild_id) AS configured,
+              (SELECT c.at FROM command_log c WHERE c.guild_id = s.guild_id ORDER BY c.id DESC LIMIT 1) AS last_command_at
        FROM admin_servers s
        ORDER BY s.left_at IS NOT NULL, s.member_count DESC, s.name COLLATE NOCASE`
     )
@@ -749,4 +751,108 @@ export async function saveAdminServerDetails(
 /** A read that failed still moves the server to the back of the queue, so it can't block the others. */
 export async function markAdminServerRefreshed(db: D1Database, guildId: string, at: number) {
   await db.prepare(`UPDATE admin_servers SET refreshed_at = ? WHERE guild_id = ?`).bind(at, guildId).run();
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Admin: activity                              */
+/* -------------------------------------------------------------------------- */
+
+export type NewCommand = {
+  at: number;
+  kind: 'slash' | 'user' | 'message';
+  command: string;
+  guildId: string | null;
+  channelId: string | null;
+  userId: string;
+  userName: string | null;
+  userGlobalName: string | null;
+  userAvatar: string | null;
+  locale: string | null;
+};
+
+export async function saveCommand(db: D1Database, command: NewCommand) {
+  await db
+    .prepare(
+      `INSERT INTO command_log (at, kind, command, guild_id, channel_id, user_id, user_name, user_global_name, user_avatar, locale)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(
+      command.at,
+      command.kind,
+      command.command,
+      command.guildId,
+      command.channelId,
+      command.userId,
+      command.userName,
+      command.userGlobalName,
+      command.userAvatar,
+      command.locale
+    )
+    .run();
+}
+
+export async function deleteCommandsBefore(db: D1Database, at: number) {
+  await db.prepare(`DELETE FROM command_log WHERE at < ?`).bind(at).run();
+}
+
+export type CommandFilter = { guildId?: string; userId?: string };
+
+function commandFilter(filter: CommandFilter, prefix = '') {
+  const clauses: string[] = [];
+  const params: string[] = [];
+  if (filter.guildId) {
+    clauses.push(`${prefix}guild_id = ?`);
+    params.push(filter.guildId);
+  }
+  if (filter.userId) {
+    clauses.push(`${prefix}user_id = ?`);
+    params.push(filter.userId);
+  }
+  return { clauses, params };
+}
+
+/** Oldest first, like a terminal. `after` reads forward from a line; otherwise it's the latest lines, or those before `before`. */
+export async function listCommands(
+  db: D1Database,
+  opts: CommandFilter & { after?: number; before?: number; limit: number }
+) {
+  const { clauses, params } = commandFilter(opts, 'l.');
+  const bound: (string | number)[] = [...params];
+  if (opts.after !== undefined) {
+    clauses.push('l.id > ?');
+    bound.push(opts.after);
+  }
+  if (opts.before !== undefined) {
+    clauses.push('l.id < ?');
+    bound.push(opts.before);
+  }
+
+  const forward = opts.after !== undefined;
+  const { results } = await db
+    .prepare(
+      `SELECT l.*, s.name AS guild_name, s.icon AS guild_icon
+       FROM command_log l LEFT JOIN admin_servers s ON s.guild_id = l.guild_id
+       ${clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''}
+       ORDER BY l.id ${forward ? 'ASC' : 'DESC'} LIMIT ?`
+    )
+    .bind(...bound, opts.limit)
+    .all<CommandLogEntry>();
+  return forward ? results : results.reverse();
+}
+
+export async function getCommandStats(db: D1Database, since: number, filter: CommandFilter) {
+  const { clauses, params } = commandFilter(filter);
+  const where = ['at >= ?', ...clauses].join(' AND ');
+
+  const [totals, top] = await Promise.all([
+    db
+      .prepare(`SELECT COUNT(*) AS commands, COUNT(DISTINCT guild_id) AS servers, COUNT(DISTINCT user_id) AS users FROM command_log WHERE ${where}`)
+      .bind(since, ...params)
+      .first<{ commands: number; servers: number; users: number }>(),
+    db
+      .prepare(`SELECT command, kind FROM command_log WHERE ${where} GROUP BY command, kind ORDER BY COUNT(*) DESC, command LIMIT 1`)
+      .bind(since, ...params)
+      .first<{ command: string; kind: string }>(),
+  ]);
+  return { commands: totals?.commands ?? 0, servers: totals?.servers ?? 0, users: totals?.users ?? 0, top };
 }

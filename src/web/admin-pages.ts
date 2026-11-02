@@ -1,6 +1,7 @@
 import { html, raw } from 'hono/html';
 import type { GuildChannel, GuildDetails } from '../services/admin-servers';
-import type { AdminServerRow, AdminServerSummary } from '../types';
+import type { CommandFilter } from '../db';
+import type { AdminServerRow, AdminServerSummary, CommandLogEntry } from '../types';
 import { searchIcon, type Html, type Page } from './pages';
 
 const CDN = 'https://cdn.discordapp.com';
@@ -10,6 +11,7 @@ const CDN = 'https://cdn.discordapp.com';
 /* -------------------------------------------------------------------------- */
 
 const ICONS = {
+  activity: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
   arrowLeft: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
   bug: '<path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/>',
   calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
@@ -31,7 +33,9 @@ const ICONS = {
   server: '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
   shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
   smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/>',
+  terminal: '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>',
   tag: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+  user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   volume: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/>',
   zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
@@ -107,6 +111,13 @@ function onlineStat(online: number | null): Html {
   </span>`;
 }
 
+function adminNav(active: 'servers' | 'activity'): Html {
+  return html`<nav class="admin-nav" aria-label="Admin">
+    <a href="/admin/servers" ${active === 'servers' ? raw('aria-current="page"') : ''}>${icon('server', 15)}Servers</a>
+    <a href="/admin/activity" ${active === 'activity' ? raw('aria-current="page"') : ''}>${icon('activity', 15)}Activity</a>
+  </nav>`;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                Server list                                 */
 /* -------------------------------------------------------------------------- */
@@ -134,6 +145,9 @@ function serverRow(server: AdminServerSummary): Html {
           ${server.vanity
             ? html`<a class="server-vanity" href="https://discord.gg/${server.vanity}" target="_blank" rel="noopener noreferrer">${icon('globe', 13)}discord.gg/${server.vanity}</a>`
             : ''}
+          <a class="server-vanity" href="/admin/activity?server=${server.guild_id}">
+            ${icon('terminal', 13)}${server.last_command_at === null ? 'No commands yet' : `Last command ${ago(server.last_command_at)}`}
+          </a>
         </p>
       </div>
     </div>
@@ -178,7 +192,8 @@ export function serverListPage(servers: AdminServerSummary[], stale: boolean): P
     title: 'Servers',
     hero: html`<span class="index">Admin</span>
       <h1>Your <em>servers.</em></h1>
-      <p class="lede">Every server Dispatch is in, and how each one is using it.</p>`,
+      <p class="lede">Every server Dispatch is in, and how each one is using it.</p>
+      ${adminNav('servers')}`,
     body: html`<div class="status-banner" data-state="${banner.state}" role="status">
         <span class="dot" aria-hidden="true"></span>
         <b>${banner.title}</b>
@@ -282,8 +297,9 @@ export function serverDetailPage(opts: {
   channels: GuildChannel[] | null;
   widgetInvite: string | null;
   activity: { reports: number; repos: number; configured: number };
+  recent: CommandLogEntry[];
 }): Page {
-  const { row, details, channels, widgetInvite, activity } = opts;
+  const { row, details, channels, widgetInvite, activity, recent } = opts;
   const status = statusOf(row.left_at, activity.configured);
   const owner = row.owner ? (JSON.parse(row.owner) as Owner) : null;
   const list = <T>(key: string) => (details?.[key] as T[] | undefined) ?? [];
@@ -322,6 +338,13 @@ export function serverDetailPage(opts: {
             ${fact('shield', 'Two-factor for mods', details ? (details.mfa_level ? 'Required' : 'Not required') : null)}
             ${fact('clock', 'Details read', row.refreshed_at === null ? 'Not yet' : ago(row.refreshed_at))}
           </dl>
+
+          <section class="server-section">
+            <h2>${icon('terminal', 16)}Recent commands <a class="section-link" href="/admin/activity?server=${row.guild_id}">View all ${icon('chevronRight', 14)}</a></h2>
+            <div class="term compact">
+              <div class="term-lines">${recent.length ? commandLines(recent) : html`<p class="term-empty">No commands recorded yet.</p>`}</div>
+            </div>
+          </section>
 
           ${channels ? section('hash', 'Channels the bot can see', channels.filter((channel) => channel.type !== CATEGORY).length, channelGroups(channels)) : ''}
           ${roles.length ? section('tag', 'Roles', roles.length, html`<p class="server-tags">${roles.map(roleTag)}</p>`) : ''}
@@ -374,5 +397,151 @@ export function serverDetailPage(opts: {
           </div>
         </aside>
       </div>`,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  Activity                                  */
+/* -------------------------------------------------------------------------- */
+
+const commandText = (kind: string, command: string) => (kind === 'slash' ? `/${command}` : command);
+const KIND_NOTES: Record<string, string> = { user: 'user menu', message: 'message menu' };
+
+const userName = (line: Pick<CommandLogEntry, 'user_name' | 'user_global_name' | 'user_id'>) =>
+  line.user_global_name ?? line.user_name ?? line.user_id;
+
+const serverName = (line: Pick<CommandLogEntry, 'guild_id' | 'guild_name'>) =>
+  line.guild_id ? (line.guild_name ?? line.guild_id) : 'Direct message';
+
+const clockUtc = (ms: number) => new Date(ms).toISOString().slice(11, 19);
+
+function commandLine(line: CommandLogEntry): Html {
+  const note = KIND_NOTES[line.kind];
+
+  return html`<details class="log-line" data-id="${line.id}">
+    <summary>
+      <time data-at="${line.at}" datetime="${new Date(line.at).toISOString()}">${clockUtc(line.at)}</time>
+      <span class="log-server">${serverName(line)}</span>
+      <span class="log-user">${userName(line)}</span>
+      <span class="log-command"><span class="log-prompt" aria-hidden="true">$</span>${commandText(line.kind, line.command)}${note ? html` <span class="log-note">${note}</span>` : ''}</span>
+    </summary>
+    <div class="log-detail">
+      <div class="log-card">
+        <h3>${icon('user', 14)}Ran by</h3>
+        <div class="server-owner-card">
+          ${avatar(line.user_id, line.user_avatar, userName(line))}
+          <div>
+            <b>${userName(line)}</b>
+            ${line.user_name ? html`<span>@${line.user_name}</span>` : ''}
+            <span>${line.user_id}</span>
+          </div>
+        </div>
+        <p class="log-links">
+          <a href="/admin/activity?user=${line.user_id}">${icon('terminal', 13)}All their commands</a>
+          <a href="https://discord.com/users/${line.user_id}" target="_blank" rel="noopener noreferrer">${icon('external', 13)}Discord profile</a>
+        </p>
+      </div>
+      <div class="log-card">
+        <h3>${icon('server', 14)}In</h3>
+        ${line.guild_id
+          ? html`<a class="log-server-link" href="/admin/servers/${line.guild_id}">
+                ${serverIcon(line.guild_id, line.guild_icon, serverName(line))}
+                <div>
+                  <b>${serverName(line)}</b>
+                  <span>${line.guild_id}</span>
+                </div>
+              </a>
+              <p class="log-links">
+                <a href="/admin/servers/${line.guild_id}">${icon('server', 13)}View server</a>
+                <a href="/admin/activity?server=${line.guild_id}">${icon('terminal', 13)}All commands here</a>
+                ${line.channel_id
+                  ? html`<a href="https://discord.com/channels/${line.guild_id}/${line.channel_id}" target="_blank" rel="noopener noreferrer">${icon('hash', 13)}Open channel</a>`
+                  : ''}
+              </p>`
+          : html`<p class="server-card-note">Run in a direct message with the bot.</p>`}
+      </div>
+    </div>
+  </details>`;
+}
+
+export function commandLines(lines: CommandLogEntry[]): Html {
+  return html`${lines.map(commandLine)}`;
+}
+
+export function activityPage(opts: {
+  lines: CommandLogEntry[];
+  stats: { commands: number; servers: number; users: number; top: { command: string; kind: string } | null };
+  filter: CommandFilter;
+  server: AdminServerRow | null;
+  limit: number;
+}): Page {
+  const { lines, stats, filter, server, limit } = opts;
+  const params = new URLSearchParams();
+  if (filter.guildId) params.set('server', filter.guildId);
+  if (filter.userId) params.set('user', filter.userId);
+  const query = params.toString();
+
+  const newest = lines[lines.length - 1];
+  const filteredUser = filter.userId ? (lines.find((line) => line.user_id === filter.userId) ?? null) : null;
+  const args = [
+    filter.guildId ? `--server="${server?.name ?? filter.guildId}"` : '',
+    filter.userId ? `--user="${filteredUser?.user_name ?? filter.userId}"` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return {
+    title: 'Activity',
+    hero: html`<span class="index">Admin</span>
+      <h1>Live <em>activity.</em></h1>
+      <p class="lede">Commands as they're run. Open a line to see who ran it, and where.</p>
+      ${adminNav('activity')}`,
+    body: html`${query
+        ? html`<div class="activity-filter">
+            ${filter.guildId
+              ? html`<a class="activity-filter-item" href="/admin/servers/${filter.guildId}">${icon('server', 14)}${server?.name ?? filter.guildId}</a>`
+              : ''}
+            ${filter.userId
+              ? html`<span class="activity-filter-item">${icon('user', 14)}${filteredUser ? userName(filteredUser) : filter.userId}</span>`
+              : ''}
+            <a class="activity-filter-clear" href="/admin/activity">Show everything</a>
+          </div>`
+        : ''}
+
+      <div class="admin-stats">
+        <div class="admin-stat">
+          <span class="admin-stat-label">${icon('terminal', 14)}Commands, 24 hours</span>
+          <b data-activity-total>${count(stats.commands)}</b>
+        </div>
+        ${summaryCell('server', count(stats.servers), 'Active servers')} ${summaryCell('users', count(stats.users), 'Active users')}
+        <div class="admin-stat">
+          <span class="admin-stat-label">${icon('zap', 14)}Most used</span>
+          <b class="admin-stat-text">${stats.top ? commandText(stats.top.kind, stats.top.command) : '–'}</b>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-bar">
+          <code class="term-title">dispatch:~$ tail -f commands${args ? ` ${args}` : ''}</code>
+          <div class="term-controls">
+            <span class="term-live" data-activity-live data-state="live" role="status"><span class="online-dot" data-online="yes" aria-hidden="true"></span><b>Live</b></span>
+            <button class="term-pause" type="button" data-activity-pause aria-pressed="false">Pause</button>
+          </div>
+        </div>
+        <div
+          class="term-body"
+          data-activity="/admin/activity/feed${query ? `?${query}` : ''}"
+          data-last="${newest?.id ?? 0}"
+          data-first="${lines[0]?.id ?? ''}"
+          tabindex="0"
+          aria-label="Command log"
+        >
+          <button class="term-older" type="button" data-activity-older ${lines.length < limit ? raw('hidden') : ''}>Load older</button>
+          <p class="term-empty" data-activity-empty ${lines.length ? raw('hidden') : ''}>No commands recorded yet. They'll appear here as they're run.</p>
+          <div class="term-lines" data-activity-lines>${commandLines(lines)}</div>
+          <p class="term-cursor" aria-hidden="true"><span>$</span><i></i></p>
+        </div>
+      </div>
+      <p class="term-note">Shows slash commands and menu commands, without what was typed into them. Kept for 30 days.</p>`,
   };
 }

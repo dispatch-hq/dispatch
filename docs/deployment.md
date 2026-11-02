@@ -16,8 +16,9 @@ Dispatch is a single Cloudflare Worker. Discord and GitHub both reach it over HT
 | `GET /admin/login` | You | Starts Discord sign-in for the private server list. Bookmark this one: every other `/admin` path is the site's 404 until you're signed in |
 | `GET /admin/callback` | Discord | Sign-in redirect |
 | `GET /admin/servers`, `GET /admin/servers/:id` | `ADMIN_DISCORD_ID` only | Searchable server list and each server's details |
+| `GET /admin/activity`, `GET /admin/activity/feed` | `ADMIN_DISCORD_ID` only | Live log of commands being run, and the feed it polls every few seconds. Filter with `?server=` and `?user=` |
 | `POST /admin/servers/:id/invite` | `ADMIN_DISCORD_ID` only | Creates a single-use invite that lasts an hour |
-| Hourly cron | Cloudflare | Records joins and leaves, and reads details for the stalest servers (see `src/services/admin-servers.ts`) |
+| Hourly cron | Cloudflare | Records joins and leaves, reads details for the stalest servers (see `src/services/admin-servers.ts`), and removes command logs older than 30 days |
 
 Below, `PUBLIC_URL` is the Worker's public origin, e.g. `https://dispatch.example.workers.dev`. Repeat each step for the **beta** environment (`--env beta`) if you use one.
 

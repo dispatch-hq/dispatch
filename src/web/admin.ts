@@ -1,6 +1,6 @@
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { getAdminServer, getAdminServerActivity, listAdminServers } from '../db';
+import { getAdminServer, getAdminServerActivity, getCommandStats, listAdminServers, listCommands, type CommandFilter } from '../db';
 import { safeEqual, signToken, verifyToken } from '../lib/crypto';
 import {
   createServerInvite,
@@ -11,7 +11,7 @@ import {
   syncServerList,
 } from '../services/admin-servers';
 import type { AppEnv } from '../types';
-import { serverDetailPage, serverListPage } from './admin-pages';
+import { activityPage, commandLines, serverDetailPage, serverListPage } from './admin-pages';
 import { renderPage } from './pages';
 
 /**
@@ -28,6 +28,11 @@ const SESSION_TTL_SECONDS = 12 * 60 * 60;
 /** Opening a server re-reads it from Discord unless that just happened. */
 const DETAILS_TTL_MS = 5 * 60 * 1000;
 const SERVER_ID = /^\d{17,20}$/;
+/** Lines on the activity page, and per request of its live feed. */
+const ACTIVITY_LINES = 100;
+/** Lines of recent activity on a server's page. */
+const RECENT_LINES = 8;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** The kind stops other tokens signed with STATE_SECRET from being accepted here. */
 type AdminToken = { k: 'admin_state' | 'admin_session'; u?: string };
@@ -112,6 +117,8 @@ adminRoutes.get('/callback', async (c) => {
 
 adminRoutes.use('/servers', requireAdmin);
 adminRoutes.use('/servers/*', requireAdmin);
+adminRoutes.use('/activity', requireAdmin);
+adminRoutes.use('/activity/*', requireAdmin);
 
 adminRoutes.get('/servers', async (c) => {
   // If Discord can't be read, the page still shows what was last stored.
@@ -136,12 +143,13 @@ adminRoutes.get('/servers/:id', async (c) => {
   const row = (await getAdminServer(c.env.DB, guildId)) ?? known;
 
   const details = parseDetails(row);
-  const [channels, widgetInvite, activity] = await Promise.all([
+  const [channels, widgetInvite, activity, recent] = await Promise.all([
     present ? getServerChannels(c.env, guildId) : null,
     present && details?.widget_enabled ? getWidgetInvite(c.env, guildId) : null,
     getAdminServerActivity(c.env.DB, guildId),
+    listCommands(c.env.DB, { guildId, limit: RECENT_LINES }),
   ]);
-  return c.html(await renderPage(c.env, c.req.url, serverDetailPage({ row, details, channels, widgetInvite, activity })));
+  return c.html(await renderPage(c.env, c.req.url, serverDetailPage({ row, details, channels, widgetInvite, activity, recent })));
 });
 
 adminRoutes.post('/servers/:id/invite', async (c) => {
@@ -155,6 +163,42 @@ adminRoutes.post('/servers/:id/invite', async (c) => {
     return { error: 'failed' } as const;
   });
   return c.json(result, 'url' in result ? 200 : 409);
+});
+
+/** Null if a filter in the URL isn't a Discord ID. */
+function activityFilter(c: Context<AppEnv>): CommandFilter | null {
+  const { server, user } = c.req.query();
+  if ((server && !SERVER_ID.test(server)) || (user && !SERVER_ID.test(user))) return null;
+  return { guildId: server, userId: user };
+}
+
+adminRoutes.get('/activity', async (c) => {
+  const filter = activityFilter(c);
+  if (!filter) return hidden(c);
+
+  const [lines, stats, server] = await Promise.all([
+    listCommands(c.env.DB, { ...filter, limit: ACTIVITY_LINES }),
+    getCommandStats(c.env.DB, Date.now() - DAY_MS, filter),
+    filter.guildId ? getAdminServer(c.env.DB, filter.guildId) : null,
+  ]);
+  return c.html(await renderPage(c.env, c.req.url, activityPage({ lines, stats, filter, server, limit: ACTIVITY_LINES })));
+});
+
+/** Polled by the page (see site/src/pages/shell.astro). The lines are rendered here, so they're escaped in one place. */
+adminRoutes.get('/activity/feed', async (c) => {
+  const filter = activityFilter(c);
+  if (!filter) return hidden(c);
+
+  const number = (value: string | undefined) => (value && /^\d+$/.test(value) ? Number(value) : undefined);
+  const { after, before } = c.req.query();
+  const lines = await listCommands(c.env.DB, { ...filter, after: number(after), before: number(before), limit: ACTIVITY_LINES });
+  return c.json({
+    html: (await commandLines(lines)).toString(),
+    count: lines.length,
+    first: lines[0]?.id ?? null,
+    last: lines[lines.length - 1]?.id ?? null,
+    more: lines.length === ACTIVITY_LINES,
+  });
 });
 
 adminRoutes.all('*', hidden);

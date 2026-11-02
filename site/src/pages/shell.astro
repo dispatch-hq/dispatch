@@ -57,6 +57,104 @@ import Base from '../layouts/Base.astro';
     });
   }
 
+  // Admin activity: polls for new commands and appends them, like a terminal following a log.
+  const POLL_MS = 4000;
+  const activity = document.querySelector<HTMLElement>('[data-activity]');
+
+  /** Times arrive in UTC; this shows them in the viewer's own. */
+  const localizeTimes = (root: ParentNode) => {
+    const today = new Date().toDateString();
+    for (const time of root.querySelectorAll<HTMLTimeElement>('time[data-at]')) {
+      const at = new Date(Number(time.dataset.at));
+      const clock = at.toLocaleTimeString([], { hour12: false });
+      time.textContent = at.toDateString() === today ? clock : `${at.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${clock}`;
+      time.title = at.toLocaleString();
+    }
+  };
+  localizeTimes(document);
+
+  if (activity) {
+    const feed = new URL(activity.dataset.activity!, location.origin);
+    const lines = activity.querySelector<HTMLElement>('[data-activity-lines]')!;
+    const empty = activity.querySelector<HTMLElement>('[data-activity-empty]');
+    const live = document.querySelector<HTMLElement>('[data-activity-live]');
+    const liveText = live?.querySelector('b');
+    const pause = document.querySelector<HTMLButtonElement>('[data-activity-pause]');
+    const older = activity.querySelector<HTMLButtonElement>('[data-activity-older]');
+    const total = document.querySelector<HTMLElement>('[data-activity-total]');
+    let last = activity.dataset.last ?? '0';
+    let first = activity.dataset.first ?? '';
+    let paused = false;
+
+    const setState = (state: 'live' | 'paused' | 'offline') => {
+      if (live) live.dataset.state = state;
+      if (liveText) liveText.textContent = { live: 'Live', paused: 'Paused', offline: 'Reconnecting' }[state];
+    };
+
+    const read = async (params: Record<string, string>) => {
+      const url = new URL(feed);
+      for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      return (await res.json()) as { html: string; count: number; first: number | null; last: number | null; more: boolean };
+    };
+
+    const atBottom = () => activity.scrollHeight - activity.scrollTop - activity.clientHeight < 40;
+    activity.scrollTop = activity.scrollHeight;
+
+    const poll = async () => {
+      // A hidden tab has nobody to show it to, and each poll is a Worker request.
+      if (!paused && !document.hidden) {
+        try {
+          const result = await read({ after: last });
+          if (result.count) {
+            const follow = atBottom();
+            const holder = document.createElement('div');
+            holder.innerHTML = result.html;
+            localizeTimes(holder);
+            for (const line of holder.querySelectorAll('.log-line')) line.classList.add('fresh');
+            lines.append(...holder.childNodes);
+            if (empty) empty.hidden = true;
+            if (follow) activity.scrollTop = activity.scrollHeight;
+            last = String(result.last);
+            if (!first) first = String(result.first);
+            if (total) total.textContent = (Number(total.textContent!.replace(/\D/g, '')) + result.count).toLocaleString('en-US');
+          }
+          if (!paused) setState('live');
+        } catch {
+          setState('offline');
+        }
+      }
+      setTimeout(poll, POLL_MS);
+    };
+    setTimeout(poll, POLL_MS);
+
+    pause?.addEventListener('click', () => {
+      paused = !paused;
+      pause.textContent = paused ? 'Resume' : 'Pause';
+      pause.setAttribute('aria-pressed', String(paused));
+      setState(paused ? 'paused' : 'live');
+    });
+
+    older?.addEventListener('click', async () => {
+      older.disabled = true;
+      try {
+        const result = await read({ before: first });
+        const height = activity.scrollHeight;
+        const holder = document.createElement('div');
+        holder.innerHTML = result.html;
+        localizeTimes(holder);
+        lines.prepend(...holder.childNodes);
+        activity.scrollTop += activity.scrollHeight - height;
+        if (result.first !== null) first = String(result.first);
+        older.hidden = !result.more;
+      } catch {
+        // Left enabled below, so it can be tried again.
+      }
+      older.disabled = false;
+    });
+  }
+
   // Admin server list: "Create invite" spins while it works, then becomes a "Join server" link.
   const INVITE_ERRORS: Record<string, string> = {
     no_permission: 'No permission to invite',

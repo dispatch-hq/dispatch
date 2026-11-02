@@ -162,4 +162,22 @@ export type AdminServerSummary = Omit<AdminServerRow, 'owner' | 'details' | 'las
   reports: number;
   repos: number;
   configured: number;
+  last_command_at: number | null;
+};
+
+/** A line of the activity page, with the server's name as last synced. */
+export type CommandLogEntry = {
+  id: number;
+  at: number;
+  kind: string;
+  command: string;
+  guild_id: string | null;
+  channel_id: string | null;
+  user_id: string;
+  user_name: string | null;
+  user_global_name: string | null;
+  user_avatar: string | null;
+  locale: string | null;
+  guild_name: string | null;
+  guild_icon: string | null;
 };

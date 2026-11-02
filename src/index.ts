@@ -3,6 +3,7 @@ import { verifyCard } from './cards';
 import * as handlers from './commands';
 import { factory } from './init';
 import { syncServers } from './services/admin-servers';
+import { pruneCommands, recordCommand } from './services/activity';
 import type { AppEnv, Bindings } from './types';
 import { adminRoutes } from './web/admin';
 import { githubRoutes } from './web/github';
@@ -31,7 +32,13 @@ app.get('/invite', (c) => {
 });
 
 // Discord interactions. `/` is kept for endpoints configured before v2.
-const interactions: Handler<AppEnv> = (c) => bot.fetch(c.req.raw, c.env, c.executionCtx);
+const interactions: Handler<AppEnv> = async (c) => {
+  const body = await c.req.raw.clone().text();
+  const res = await bot.fetch(c.req.raw, c.env, c.executionCtx);
+  // Only an interaction that passed the signature check gets an OK, so only those are logged.
+  if (res.ok) c.executionCtx.waitUntil(recordCommand(c.env, body));
+  return res;
+};
 app.post('/', interactions);
 app.post('/interactions', interactions);
 
@@ -85,8 +92,9 @@ app.get('/cards/:file{.+\\.png}', async (c) => {
 
 export default {
   fetch: app.fetch,
-  // The hourly sync behind the private server list.
+  // The hourly sync behind the private server list, and the activity log's cleanup.
   scheduled(_controller, env, ctx) {
     ctx.waitUntil(syncServers(env).catch((error) => console.error('admin: server sync failed', error)));
+    ctx.waitUntil(pruneCommands(env));
   },
 } satisfies ExportedHandler<Bindings>;
