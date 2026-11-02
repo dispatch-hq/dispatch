@@ -36,7 +36,7 @@
     "wrangler": "^4.113.0"
   },
   "dependencies": {
-    "discord-hono": "^0.22.2",
+    "discord-hono": "^0.23.0",
     "hono": "^4.13.14"
   }
 }
