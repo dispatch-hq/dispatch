@@ -697,6 +697,19 @@ export function getAdminServer(db: D1Database, guildId: string) {
   return db.prepare(`SELECT * FROM admin_servers WHERE guild_id = ?`).bind(guildId).first<AdminServerRow>();
 }
 
+/** What Dispatch itself knows about a server, for its details page. */
+export async function getAdminServerActivity(db: D1Database, guildId: string) {
+  const row = await db
+    .prepare(
+      `SELECT (SELECT COUNT(*) FROM reports WHERE guild_id = ?1) AS reports,
+              (SELECT COUNT(*) FROM guild_repos WHERE guild_id = ?1) AS repos,
+              EXISTS (SELECT 1 FROM guilds WHERE guild_id = ?1) AS configured`
+    )
+    .bind(guildId)
+    .first<{ reports: number; repos: number; configured: number }>();
+  return row ?? { reports: 0, repos: 0, configured: 0 };
+}
+
 /** Servers the bot is still in, those never read first and then the longest since. */
 export async function getStaleAdminServers(db: D1Database, limit: number) {
   const { results } = await db

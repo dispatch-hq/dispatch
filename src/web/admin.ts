@@ -1,6 +1,6 @@
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { getAdminServer, listAdminServers } from '../db';
+import { getAdminServer, getAdminServerActivity, listAdminServers } from '../db';
 import { safeEqual, signToken, verifyToken } from '../lib/crypto';
 import {
   createServerInvite,
@@ -11,7 +11,8 @@ import {
   syncServerList,
 } from '../services/admin-servers';
 import type { AppEnv } from '../types';
-import { renderPage, serverDetailPage, serverListPage } from './pages';
+import { serverDetailPage, serverListPage } from './admin-pages';
+import { renderPage } from './pages';
 
 /**
  * The private server list. Only ADMIN_DISCORD_ID gets in, and everyone else
@@ -135,11 +136,12 @@ adminRoutes.get('/servers/:id', async (c) => {
   const row = (await getAdminServer(c.env.DB, guildId)) ?? known;
 
   const details = parseDetails(row);
-  const [channels, widgetInvite] = await Promise.all([
+  const [channels, widgetInvite, activity] = await Promise.all([
     present ? getServerChannels(c.env, guildId) : null,
     present && details?.widget_enabled ? getWidgetInvite(c.env, guildId) : null,
+    getAdminServerActivity(c.env.DB, guildId),
   ]);
-  return c.html(await renderPage(c.env, c.req.url, serverDetailPage({ row, details, channels, widgetInvite })));
+  return c.html(await renderPage(c.env, c.req.url, serverDetailPage({ row, details, channels, widgetInvite, activity })));
 });
 
 adminRoutes.post('/servers/:id/invite', async (c) => {

@@ -199,6 +199,21 @@ describe('server details', () => {
     expect(server().member_count).toBe(12);
   });
 
+  it('groups channels by category and shows what Dispatch knows', async () => {
+    w.http.on('GET', CHANNELS, () => [
+      { id: '1', name: 'Community', type: 4, position: 0 },
+      { id: '2', name: 'general-chat', type: 0, position: 0, parent_id: '1' },
+      { id: '3', name: 'loose-channel', type: 2, position: 0, parent_id: null },
+    ]);
+    await signedIn('/admin/servers');
+    const res = await w.request(`/admin/servers/${SERVER}`, { headers: { cookie: await session() } });
+    const page = await res.text();
+
+    expect(page.indexOf('loose-channel')).toBeLessThan(page.indexOf('Community'));
+    expect(page.indexOf('Community')).toBeLessThan(page.indexOf('general-chat'));
+    expect(page).toContain('Not set up');
+  });
+
   it('does not read Discord again for a fresh server', async () => {
     await signedIn('/admin/servers');
     await signedIn(`/admin/servers/${SERVER}`);

@@ -41,7 +41,7 @@ export type GuildDetails = {
   [key: string]: unknown;
 };
 
-export type GuildChannel = { id: string; name: string; type: number; position?: number };
+export type GuildChannel = { id: string; name: string; type: number; position?: number; parent_id?: string | null };
 
 const discord = (env: Bindings, path: string, init: RequestInit = {}) =>
   fetch(`${DISCORD_API}${path}`, {
