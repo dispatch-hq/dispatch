@@ -4,6 +4,7 @@ import type {
   Attachment,
   CannedReply,
   CommandLogEntry,
+  FailureLogEntry,
   GuildRepo,
   GuildRow,
   Provider,
@@ -652,23 +653,24 @@ export async function setStatusDiscordOk(db: D1Database, ok: boolean) {
  */
 export async function saveServerList(
   db: D1Database,
-  guilds: { id: string; name: string; icon: string | null; approximate_member_count?: number; approximate_presence_count?: number }[],
+  guilds: { id: string; name: string; icon: string | null; permissions?: string; approximate_member_count?: number; approximate_presence_count?: number }[],
   now: number,
   complete: boolean
 ) {
   const upsert = db.prepare(
-    `INSERT INTO admin_servers (guild_id, name, icon, member_count, online_count, first_seen, last_seen)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
+    `INSERT INTO admin_servers (guild_id, name, icon, member_count, online_count, permissions, first_seen, last_seen)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?7, ?6, ?6)
      ON CONFLICT (guild_id) DO UPDATE SET
        name = excluded.name,
        icon = excluded.icon,
        member_count = excluded.member_count,
        online_count = excluded.online_count,
+       permissions = excluded.permissions,
        last_seen = excluded.last_seen,
        left_at = NULL`
   );
   const statements = guilds.map((guild) =>
-    upsert.bind(guild.id, guild.name, guild.icon, guild.approximate_member_count ?? null, guild.approximate_presence_count ?? null, now)
+    upsert.bind(guild.id, guild.name, guild.icon, guild.approximate_member_count ?? null, guild.approximate_presence_count ?? null, now, guild.permissions ?? null)
   );
   if (complete) {
     statements.push(db.prepare(`UPDATE admin_servers SET left_at = ?1 WHERE left_at IS NULL AND last_seen < ?1`).bind(now));
@@ -676,40 +678,48 @@ export async function saveServerList(
   if (statements.length) await db.batch(statements);
 }
 
-export async function listAdminServers(db: D1Database) {
+const ADMIN_SERVER_SUMMARY = `
+  SELECT s.guild_id, s.name, s.icon, s.member_count, s.online_count, s.owner_id, s.first_seen, s.left_at,
+         s.permissions, s.pro, s.pro_ends,
+         json_extract(s.owner, '$.username') AS owner_name,
+         json_extract(s.owner, '$.avatar') AS owner_avatar,
+         json_extract(s.details, '$.vanity_url_code') AS vanity,
+         json_extract(s.details, '$.description') AS description,
+         (SELECT COUNT(*) FROM reports r WHERE r.guild_id = s.guild_id) AS reports,
+         (SELECT COUNT(*) FROM reports r WHERE r.guild_id = s.guild_id AND r.status = 'pending') AS pending,
+         (SELECT MIN(r.created_at) FROM reports r WHERE r.guild_id = s.guild_id AND r.status = 'pending') AS oldest_pending,
+         (SELECT COUNT(*) FROM guild_repos gr WHERE gr.guild_id = s.guild_id) AS repos,
+         (SELECT COUNT(*) FROM failure_log f WHERE f.guild_id = s.guild_id AND f.at >= ?1) AS failures,
+         EXISTS (SELECT 1 FROM guilds g WHERE g.guild_id = s.guild_id) AS configured,
+         (SELECT c.at FROM command_log c WHERE c.guild_id = s.guild_id ORDER BY c.id DESC LIMIT 1) AS last_command_at
+  FROM admin_servers s`;
+
+export async function listAdminServers(db: D1Database, failuresSince: number) {
   const { results } = await db
-    .prepare(
-      `SELECT s.guild_id, s.name, s.icon, s.member_count, s.online_count, s.owner_id, s.first_seen, s.left_at,
-              json_extract(s.owner, '$.username') AS owner_name,
-              json_extract(s.owner, '$.avatar') AS owner_avatar,
-              json_extract(s.details, '$.vanity_url_code') AS vanity,
-              json_extract(s.details, '$.description') AS description,
-              (SELECT COUNT(*) FROM reports r WHERE r.guild_id = s.guild_id) AS reports,
-              (SELECT COUNT(*) FROM guild_repos gr WHERE gr.guild_id = s.guild_id) AS repos,
-              EXISTS (SELECT 1 FROM guilds g WHERE g.guild_id = s.guild_id) AS configured,
-              (SELECT c.at FROM command_log c WHERE c.guild_id = s.guild_id ORDER BY c.id DESC LIMIT 1) AS last_command_at
-       FROM admin_servers s
-       ORDER BY s.left_at IS NOT NULL, s.member_count DESC, s.name COLLATE NOCASE`
-    )
+    .prepare(`${ADMIN_SERVER_SUMMARY} ORDER BY s.left_at IS NOT NULL, s.member_count DESC, s.name COLLATE NOCASE`)
+    .bind(failuresSince)
     .all<AdminServerSummary>();
   return results;
 }
 
-export function getAdminServer(db: D1Database, guildId: string) {
-  return db.prepare(`SELECT * FROM admin_servers WHERE guild_id = ?`).bind(guildId).first<AdminServerRow>();
+export function getAdminServerSummary(db: D1Database, guildId: string, failuresSince: number) {
+  return db
+    .prepare(`${ADMIN_SERVER_SUMMARY} WHERE s.guild_id = ?2`)
+    .bind(failuresSince, guildId)
+    .first<AdminServerSummary>();
 }
 
-/** What Dispatch itself knows about a server, for its details page. */
-export async function getAdminServerActivity(db: D1Database, guildId: string) {
-  const row = await db
-    .prepare(
-      `SELECT (SELECT COUNT(*) FROM reports WHERE guild_id = ?1) AS reports,
-              (SELECT COUNT(*) FROM guild_repos WHERE guild_id = ?1) AS repos,
-              EXISTS (SELECT 1 FROM guilds WHERE guild_id = ?1) AS configured`
-    )
-    .bind(guildId)
-    .first<{ reports: number; repos: number; configured: number }>();
-  return row ?? { reports: 0, repos: 0, configured: 0 };
+/** Servers that ran a command since a given time. */
+export async function getActiveGuildIds(db: D1Database, since: number) {
+  const { results } = await db
+    .prepare(`SELECT DISTINCT guild_id FROM command_log WHERE at >= ? AND guild_id IS NOT NULL`)
+    .bind(since)
+    .all<{ guild_id: string }>();
+  return new Set(results.map((row) => row.guild_id));
+}
+
+export function getAdminServer(db: D1Database, guildId: string) {
+  return db.prepare(`SELECT * FROM admin_servers WHERE guild_id = ?`).bind(guildId).first<AdminServerRow>();
 }
 
 /** Servers the bot is still in, those never read first and then the longest since. */
@@ -855,4 +865,115 @@ export async function getCommandStats(db: D1Database, since: number, filter: Com
       .first<{ command: string; kind: string }>(),
   ]);
   return { commands: totals?.commands ?? 0, servers: totals?.servers ?? 0, users: totals?.users ?? 0, top };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Admin: insights                              */
+/* -------------------------------------------------------------------------- */
+
+export type NewFailure = {
+  at: number;
+  source: 'command' | 'discord' | 'github' | 'attachments' | 'webhook';
+  action: string;
+  message: string | null;
+  status: number | null;
+  guildId: string | null;
+};
+
+export async function saveFailure(db: D1Database, failure: NewFailure) {
+  await db
+    .prepare(`INSERT INTO failure_log (at, source, action, message, status, guild_id) VALUES (?, ?, ?, ?, ?, ?)`)
+    .bind(failure.at, failure.source, failure.action, failure.message, failure.status, failure.guildId)
+    .run();
+}
+
+export async function deleteFailuresBefore(db: D1Database, at: number) {
+  await db.prepare(`DELETE FROM failure_log WHERE at < ?`).bind(at).run();
+}
+
+/** A failed message or thread only knows its channel, which is enough if it's one the server configured. */
+export async function getGuildIdForChannel(db: D1Database, channelId: string) {
+  const row = await db
+    .prepare(`SELECT guild_id FROM guilds WHERE triage_channel_id = ?1 OR updates_channel_id = ?1 OR board_channel_id = ?1 LIMIT 1`)
+    .bind(channelId)
+    .first<{ guild_id: string }>();
+  return row?.guild_id ?? null;
+}
+
+export async function listFailures(db: D1Database, opts: { guildId?: string; source?: string; limit: number }) {
+  const clauses: string[] = [];
+  const params: string[] = [];
+  if (opts.guildId) {
+    clauses.push('f.guild_id = ?');
+    params.push(opts.guildId);
+  }
+  if (opts.source) {
+    clauses.push('f.source = ?');
+    params.push(opts.source);
+  }
+  const { results } = await db
+    .prepare(
+      `SELECT f.*, s.name AS guild_name
+       FROM failure_log f LEFT JOIN admin_servers s ON s.guild_id = f.guild_id
+       ${clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''}
+       ORDER BY f.id DESC LIMIT ?`
+    )
+    .bind(...params, opts.limit)
+    .all<FailureLogEntry>();
+  return results;
+}
+
+export async function getFailureCounts(db: D1Database, since: number) {
+  const { results } = await db
+    .prepare(`SELECT source, COUNT(*) AS total FROM failure_log WHERE at >= ? GROUP BY source ORDER BY total DESC`)
+    .bind(since)
+    .all<{ source: string; total: number }>();
+  return results;
+}
+
+export async function saveProServers(db: D1Database, active: Map<string, number | null>) {
+  await db.batch([
+    db.prepare(`UPDATE admin_servers SET pro = 0, pro_ends = NULL WHERE pro = 1`),
+    ...[...active].map(([guildId, ends]) =>
+      db.prepare(`UPDATE admin_servers SET pro = 1, pro_ends = ? WHERE guild_id = ?`).bind(ends, guildId)
+    ),
+  ]);
+}
+
+export async function getReportPipeline(db: D1Database) {
+  const [statuses, totals] = await Promise.all([
+    db.prepare(`SELECT status, COUNT(*) AS total FROM reports GROUP BY status`).all<{ status: string; total: number }>(),
+    db
+      .prepare(
+        `SELECT
+           SUM(created_at >= datetime('now', '-7 days')) AS recent,
+           SUM(status = 'pending' AND info_request IS NOT NULL) AS waiting_on_reporter,
+           MIN(CASE WHEN status = 'pending' THEN created_at END) AS oldest_pending,
+           AVG(CASE WHEN status = 'fixed' THEN julianday(updated_at) - julianday(created_at) END) AS days_to_fix
+         FROM reports`
+      )
+      .first<{ recent: number | null; waiting_on_reporter: number | null; oldest_pending: string | null; days_to_fix: number | null }>(),
+  ]);
+  return {
+    statuses: Object.fromEntries(statuses.results.map((row) => [row.status, row.total])) as Record<string, number>,
+    recent: totals?.recent ?? 0,
+    waitingOnReporter: totals?.waiting_on_reporter ?? 0,
+    oldestPending: totals?.oldest_pending ?? null,
+    daysToFix: totals?.days_to_fix ?? null,
+  };
+}
+
+/** Row counts, and the database's size as D1 reports it alongside any query. */
+export async function getStorageUse(db: D1Database) {
+  const result = await db
+    .prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM reports) AS reports,
+         (SELECT COALESCE(SUM(json_array_length(attachments)), 0) FROM reports) AS attachments,
+         (SELECT COUNT(*) FROM command_log) AS commands,
+         (SELECT COUNT(*) FROM failure_log) AS failures`
+    )
+    .all<{ reports: number; attachments: number; commands: number; failures: number }>();
+  const sized = result as unknown as { meta?: { size_after?: number } };
+  return { ...result.results[0]!, bytes: sized.meta?.size_after ?? null };
 }

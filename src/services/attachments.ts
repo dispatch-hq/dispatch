@@ -1,5 +1,6 @@
 import type { APIAttachment } from 'discord-api-types/v10';
 import type { Attachment, Bindings } from '../types';
+import { recordFailure } from './failures';
 
 export const MAX_ATTACHMENTS = 3;
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
@@ -73,6 +74,7 @@ export async function rehostAttachments(
       });
     } catch (error) {
       console.warn(`attachments: failed to rehost ${upload.filename}`, error);
+      await recordFailure(env, { source: 'attachments', action: 'store an attachment', error, guildId });
       result.skipped.push(upload.filename);
     }
   }

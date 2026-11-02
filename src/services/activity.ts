@@ -1,4 +1,4 @@
-import { deleteCommandsBefore, saveCommand, type NewCommand } from '../db';
+import { deleteCommandsBefore, deleteFailuresBefore, saveCommand, type NewCommand } from '../db';
 import type { Bindings } from '../types';
 
 /** Backs the private /admin/activity page. A logging failure must never affect the command itself. */
@@ -62,8 +62,10 @@ export async function recordCommand(env: Bindings, body: string): Promise<void> 
   }
 }
 
-export async function pruneCommands(env: Bindings): Promise<void> {
-  await deleteCommandsBefore(env.DB, Date.now() - RETENTION_MS).catch((error) =>
-    console.error('activity: pruning the command log failed', error)
+/** Removes command and failure logs past their retention. */
+export async function pruneLogs(env: Bindings): Promise<void> {
+  const before = Date.now() - RETENTION_MS;
+  await Promise.all([deleteCommandsBefore(env.DB, before), deleteFailuresBefore(env.DB, before)]).catch((error) =>
+    console.error('activity: pruning the logs failed', error)
   );
 }

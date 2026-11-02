@@ -8,6 +8,7 @@ import { notice } from '../lib/ui';
 import { ProviderError } from '../providers';
 import { exchangeOAuthCode, githubAuthorizeUrl, githubInstallUrl, listWritableRepos } from '../providers/github';
 import { sendDirectMessage } from '../services/discord';
+import { recordFailure } from '../services/failures';
 import { handleGitHubEvent } from '../services/github-events';
 import type { AppEnv } from '../types';
 import { messagePage, renderPage, repoPickerPage, type Page } from './pages';
@@ -94,6 +95,7 @@ githubRoutes.get('/callback', async (c) => {
     );
   } catch (error) {
     console.error('github callback failed', error);
+    await recordFailure(c.env, { source: 'github', action: 'finish GitHub sign-in', error, guildId: claims.g });
     const detail =
       error instanceof ProviderError && error.status === 401
         ? 'GitHub rejected the sign-in. Please try again from Discord.'
@@ -182,7 +184,10 @@ githubRoutes.post('/webhook', async (c) => {
   if (event === 'ping') return c.text('pong');
 
   c.executionCtx.waitUntil(
-    handleGitHubEvent(c.env, event, JSON.parse(body)).catch((error) => console.error(`webhook ${event} failed`, error))
+    handleGitHubEvent(c.env, event, JSON.parse(body)).catch(async (error) => {
+      console.error(`webhook ${event} failed`, error);
+      await recordFailure(c.env, { source: 'webhook', action: `handle GitHub ${event}`, error });
+    })
   );
   return c.body(null, 202);
 });

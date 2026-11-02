@@ -11,7 +11,7 @@ import type { Bindings } from '../types';
 
 type InteractionWithEntitlements = { entitlements?: APIEntitlement[] };
 
-function isActive(entitlement: APIEntitlement, now: number): boolean {
+export function isActive(entitlement: APIEntitlement, now: number): boolean {
   if (entitlement.deleted) return false;
   if (entitlement.starts_at && Date.parse(entitlement.starts_at) > now) return false;
   return !entitlement.ends_at || Date.parse(entitlement.ends_at) > now;

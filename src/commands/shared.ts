@@ -1,5 +1,7 @@
 import type { APIInteractionGuildMember } from 'discord-api-types/v10';
 import { EPHEMERAL_V2, notice, PUBLIC_V2, view } from '../lib/ui';
+import { recordFailure } from '../services/failures';
+import type { Bindings } from '../types';
 
 type Flag = (typeof EPHEMERAL_V2)[number] | (typeof PUBLIC_V2)[number];
 
@@ -10,7 +12,15 @@ type Responder = {
 
 type Followup = {
   followup(data: ReturnType<typeof view>): Promise<unknown>;
+  env: Bindings;
+  interaction: unknown;
 };
+
+/** A command's name or a component's custom_id, for the failure log. */
+function interactionLabel(interaction: unknown): string {
+  const data = (interaction as { data?: { name?: string; custom_id?: string } }).data;
+  return data?.name ? `/${data.name}` : (data?.custom_id?.split(';')[0] ?? 'interaction');
+}
 
 type GuildInteraction = {
   guild_id?: string;
@@ -62,6 +72,12 @@ export function guarded<C extends Followup>(work: (c: C) => Promise<unknown>) {
       await work(c);
     } catch (error) {
       console.error('interaction failed', error);
+      await recordFailure(c.env, {
+        source: 'command',
+        action: interactionLabel(c.interaction),
+        error,
+        guildId: (c.interaction as { guild_id?: string }).guild_id,
+      });
       await c.followup(view([notice(messages.failed)])).catch(() => {});
     }
   };

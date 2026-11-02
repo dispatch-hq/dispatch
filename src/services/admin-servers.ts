@@ -3,10 +3,14 @@ import {
   getStaleAdminServers,
   markAdminServerRefreshed,
   saveAdminServerDetails,
+  saveProServers,
   saveServerList,
 } from '../db';
+import type { APIEntitlement } from 'discord-api-types/v10';
 import type { AdminServerRow, Bindings } from '../types';
 import { listBotGuilds } from './discord';
+import { recordFailure } from './failures';
+import { isActive } from './premium';
 
 /**
  * Keeps `admin_servers` current for the private /admin/servers page. The server
@@ -18,6 +22,9 @@ import { listBotGuilds } from './discord';
 const DISCORD_API = 'https://discord.com/api/v10';
 /** Discord calls one sync may make, leaving room for D1 in the free plan's 50 subrequests. */
 const SYNC_CALLS = 40;
+const ENTITLEMENTS_PER_PAGE = 100;
+/** 300 active subscriptions, which also bounds what this can take from the calls above. */
+const MAX_ENTITLEMENT_PAGES = 3;
 /** Text, then announcement: the channel types an invite can usefully land on. */
 const INVITE_CHANNEL_TYPES = new Set([0, 5]);
 /** Each refused channel costs a subrequest and counts toward Discord's invalid request limit. */
@@ -55,6 +62,7 @@ export async function refreshServer(env: Bindings, guildId: string): Promise<'ok
   if (!res.ok) {
     console.warn(`admin: reading server ${guildId} failed (${res.status})`);
     if (res.status === 429) return 'limited';
+    await recordFailure(env, { source: 'discord', action: 'read server details', status: res.status, guildId });
     await markAdminServerRefreshed(env.DB, guildId, Date.now());
     return 'failed';
   }
@@ -87,12 +95,50 @@ export async function syncServerList(env: Bindings) {
   return list;
 }
 
+/**
+ * Records which servers have Dispatch Pro. Interactions carry this too, but only
+ * for the server using one at that moment. Returns the Discord calls it made. A
+ * partial read is thrown away, so nobody loses Pro here because of a failure.
+ */
+export async function syncProServers(env: Bindings): Promise<number> {
+  const active = new Map<string, number | null>();
+  const now = Date.now();
+  let after = '';
+
+  for (let page = 1; page <= MAX_ENTITLEMENT_PAGES; page++) {
+    const query = `exclude_ended=true&limit=${ENTITLEMENTS_PER_PAGE}${after && `&after=${after}`}`;
+    const res = await discord(env, `/applications/${env.DISCORD_APPLICATION_ID}/entitlements?${query}`);
+    if (!res.ok) {
+      await recordFailure(env, { source: 'discord', action: 'read Pro subscriptions', status: res.status });
+      return page;
+    }
+
+    const batch = (await res.json()) as APIEntitlement[];
+    for (const entitlement of batch) {
+      if (!entitlement.guild_id || !isActive(entitlement, now)) continue;
+      if (env.PREMIUM_SKU_ID && entitlement.sku_id !== env.PREMIUM_SKU_ID) continue;
+      active.set(entitlement.guild_id, entitlement.ends_at ? Date.parse(entitlement.ends_at) : null);
+    }
+    if (batch.length < ENTITLEMENTS_PER_PAGE) {
+      await saveProServers(env.DB, active);
+      return page;
+    }
+    after = batch.reduce((highest, { id }) => (BigInt(id) > BigInt(highest) ? id : highest), batch[0]!.id);
+  }
+  return MAX_ENTITLEMENT_PAGES;
+}
+
 /** The hourly cron job. */
 export async function syncServers(env: Bindings): Promise<void> {
   const list = await syncServerList(env);
   if (list === 'limited' || list === 'down') return;
 
-  const count = Math.floor((SYNC_CALLS - list.pages) / 2);
+  const proCalls = await syncProServers(env).catch(async (error) => {
+    await recordFailure(env, { source: 'discord', action: 'read Pro subscriptions', error });
+    return 1;
+  });
+
+  const count = Math.floor((SYNC_CALLS - list.pages - proCalls) / 2);
   if (count <= 0) return;
   for (const guildId of await getStaleAdminServers(env.DB, count)) {
     if ((await refreshServer(env, guildId)) === 'limited') return;

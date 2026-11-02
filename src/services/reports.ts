@@ -15,6 +15,7 @@ import {
 import { escapeMarkdown, isImage, issueBody, issueTitle, parseLabels, truncate } from '../lib/format';
 import { card, divider, row, section, text, type Block, type Container } from '../lib/ui';
 import { getProvider, ProviderError, type CreatedIssue } from '../providers';
+import { recordFailure } from './failures';
 import type { Bindings, GuildRepo, GuildRow, ReportRow } from '../types';
 import { refreshBoard } from './board';
 import { editChannelMessage, sendChannelMessage, sendDirectMessage, startThread } from './discord';
@@ -297,6 +298,7 @@ export async function submitReport(
     // Can't reach the triage channel (deleted, or missing permissions). Rather
     // than silently losing the report, fall through and file it directly.
     console.warn(`reports: triage channel ${guild.triage_channel_id} unavailable for guild ${guild.guild_id}`);
+    await recordFailure(env, { source: 'discord', action: 'reach the triage channel', message: 'Filed the report directly instead.', guildId: guild.guild_id });
   }
 
   try {
@@ -309,6 +311,7 @@ export async function submitReport(
     };
   } catch (error) {
     await deleteReport(env.DB, report.id);
+    await recordFailure(env, { source: 'github', action: 'create an issue', error, guildId: guild.guild_id });
     return { kind: 'failed', error: describeError(error) };
   }
 }

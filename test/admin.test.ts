@@ -102,7 +102,7 @@ describe('admin access', () => {
       const res = await finish(state, cookie);
 
       expect(res.status).toBe(302);
-      expect(res.headers.get('location')).toBe('/admin/servers');
+      expect(res.headers.get('location')).toBe('/admin/overview');
       const sessionCookie = res.headers.getSetCookie().find((c) => c.startsWith('admin_session='))!;
       expect(sessionCookie).toMatch(/HttpOnly/);
 

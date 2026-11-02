@@ -16,6 +16,7 @@ import { card, EPHEMERAL_V2, notice, PUBLIC_V2, row, text, view } from '../lib/u
 import { factory } from '../init';
 import { refreshBoard } from '../services/board';
 import { sendChannelMessage, sendDirectMessage } from '../services/discord';
+import { recordFailure } from '../services/failures';
 import { hasPremium } from '../services/premium';
 import { announce, describeError, publishReport, refreshReportMessages, repoUnavailable, reportCard, reportPicture } from '../services/reports';
 import type { Bindings, CannedReply, GuildRow, ReportRow } from '../types';
@@ -161,6 +162,7 @@ export const button_triage_approve = factory.component(
             await refreshBoard(c.env, ctx.guildId);
           } catch (error) {
             await releaseReport(c.env.DB, reportId);
+            await recordFailure(c.env, { source: 'github', action: 'create an issue', error, guildId: ctx.guildId });
             await c.followup(view([await reportCard(c.env, guild, { ...report, status: 'pending' }, describeError(error))]));
           }
         })

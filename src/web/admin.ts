@@ -1,6 +1,18 @@
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { getAdminServer, getAdminServerActivity, getCommandStats, listAdminServers, listCommands, type CommandFilter } from '../db';
+import {
+  getActiveGuildIds,
+  getAdminServer,
+  getAdminServerSummary,
+  getCommandStats,
+  getFailureCounts,
+  getReportPipeline,
+  getStorageUse,
+  listAdminServers,
+  listCommands,
+  listFailures,
+  type CommandFilter,
+} from '../db';
 import { safeEqual, signToken, verifyToken } from '../lib/crypto';
 import {
   createServerInvite,
@@ -11,6 +23,7 @@ import {
   syncServerList,
 } from '../services/admin-servers';
 import type { AppEnv } from '../types';
+import { failuresPage, overviewPage } from './admin-insights-pages';
 import { activityPage, commandLines, serverDetailPage, serverListPage } from './admin-pages';
 import { renderPage } from './pages';
 
@@ -33,6 +46,10 @@ const ACTIVITY_LINES = 100;
 /** Lines of recent activity on a server's page. */
 const RECENT_LINES = 8;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEK_MS = 7 * DAY_MS;
+const FAILURE_LINES = 200;
+const RECENT_FAILURES = 5;
+const FAILURE_SOURCES = new Set(['command', 'discord', 'github', 'attachments', 'webhook']);
 
 /** The kind stops other tokens signed with STATE_SECRET from being accepted here. */
 type AdminToken = { k: 'admin_state' | 'admin_session'; u?: string };
@@ -112,13 +129,45 @@ adminRoutes.get('/callback', async (c) => {
 
   const session = await signToken<AdminToken>(c.env.STATE_SECRET, { k: 'admin_session', u: userId }, SESSION_TTL_SECONDS);
   setCookie(c, SESSION_COOKIE, session, cookieOptions(SESSION_TTL_SECONDS));
-  return c.redirect('/admin/servers');
+  return c.redirect('/admin/overview');
 });
 
+adminRoutes.use('/', requireAdmin);
+adminRoutes.use('/overview', requireAdmin);
+adminRoutes.use('/failures', requireAdmin);
 adminRoutes.use('/servers', requireAdmin);
 adminRoutes.use('/servers/*', requireAdmin);
 adminRoutes.use('/activity', requireAdmin);
 adminRoutes.use('/activity/*', requireAdmin);
+
+adminRoutes.get('/', (c) => c.redirect('/admin/overview'));
+
+adminRoutes.get('/overview', async (c) => {
+  const now = Date.now();
+  const [servers, activeGuilds, failures, pipeline, storage] = await Promise.all([
+    listAdminServers(c.env.DB, now - WEEK_MS),
+    getActiveGuildIds(c.env.DB, now - WEEK_MS),
+    getFailureCounts(c.env.DB, now - DAY_MS),
+    getReportPipeline(c.env.DB),
+    getStorageUse(c.env.DB),
+  ]);
+  const failuresToday = failures.reduce((sum, row) => sum + row.total, 0);
+  return c.html(await renderPage(c.env, c.req.url, overviewPage({ servers, activeGuilds, failuresToday, pipeline, storage, now })));
+});
+
+adminRoutes.get('/failures', async (c) => {
+  const { server, source } = c.req.query();
+  if ((server && !SERVER_ID.test(server)) || (source && !FAILURE_SOURCES.has(source))) return hidden(c);
+
+  const [lines, counts, row] = await Promise.all([
+    listFailures(c.env.DB, { guildId: server, source, limit: FAILURE_LINES }),
+    getFailureCounts(c.env.DB, Date.now() - WEEK_MS),
+    server ? getAdminServer(c.env.DB, server) : null,
+  ]);
+  return c.html(
+    await renderPage(c.env, c.req.url, failuresPage({ lines, counts, filter: { guildId: server, source }, serverName: row?.name ?? null }))
+  );
+});
 
 adminRoutes.get('/servers', async (c) => {
   // If Discord can't be read, the page still shows what was last stored.
@@ -126,7 +175,7 @@ adminRoutes.get('/servers', async (c) => {
     console.error('admin: syncing the server list failed', error);
     return 'down' as const;
   });
-  const servers = await listAdminServers(c.env.DB);
+  const servers = await listAdminServers(c.env.DB, Date.now() - WEEK_MS);
   const stale = list === 'limited' || list === 'down';
   return c.html(await renderPage(c.env, c.req.url, serverListPage(servers, stale)));
 });
@@ -143,13 +192,15 @@ adminRoutes.get('/servers/:id', async (c) => {
   const row = (await getAdminServer(c.env.DB, guildId)) ?? known;
 
   const details = parseDetails(row);
-  const [channels, widgetInvite, activity, recent] = await Promise.all([
+  const [channels, widgetInvite, summary, recent, failures] = await Promise.all([
     present ? getServerChannels(c.env, guildId) : null,
     present && details?.widget_enabled ? getWidgetInvite(c.env, guildId) : null,
-    getAdminServerActivity(c.env.DB, guildId),
+    getAdminServerSummary(c.env.DB, guildId, Date.now() - WEEK_MS),
     listCommands(c.env.DB, { guildId, limit: RECENT_LINES }),
+    listFailures(c.env.DB, { guildId, limit: RECENT_FAILURES }),
   ]);
-  return c.html(await renderPage(c.env, c.req.url, serverDetailPage({ row, details, channels, widgetInvite, activity, recent })));
+  if (!summary) return hidden(c);
+  return c.html(await renderPage(c.env, c.req.url, serverDetailPage({ row, details, channels, widgetInvite, summary, recent, failures })));
 });
 
 adminRoutes.post('/servers/:id/invite', async (c) => {

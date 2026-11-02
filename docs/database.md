@@ -16,6 +16,7 @@ Dispatch stores its state in **Cloudflare D1** (serverless SQLite), bound as `DB
 | `muted_reporters` | Muted member | Can't report or vote in that server. |
 | `status_counts` | (single row) | Server and member counts behind `/api/status`. |
 | `command_log` | Command that was run | What the private `/admin/activity` page shows: the command's name, who ran it and where. Values typed into a command are never stored. Rows older than 30 days are removed by the hourly cron. |
+| `failure_log` | Something that failed | What the private `/admin/failures` page shows: the source, what was being attempted, the error and the server, if known. Rows older than 30 days are removed by the hourly cron. |
 | `admin_servers` | Server the bot has been in | What the private `/admin/servers` page shows: the guild and owner objects as JSON, when the bot was first and last seen, and when it left. Written by the hourly sync and when a page opens. |
 
 Report status lifecycle:

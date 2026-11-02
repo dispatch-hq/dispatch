@@ -7,9 +7,11 @@ import {
   $users$me$channels,
   createRest,
 } from 'discord-hono';
+import { getGuildIdForChannel } from '../db';
 import type { Container } from '../lib/ui';
 import { message } from '../lib/ui';
 import type { Bindings } from '../types';
+import { recordFailure } from './failures';
 
 /**
  * Thin wrappers around the Discord REST API for work that happens outside an
@@ -18,8 +20,30 @@ import type { Bindings } from '../types';
  * never break the bug-report pipeline.
  */
 
-async function failed(label: string, res: { status: number; text(): Promise<string> }): Promise<false> {
-  console.warn(`discord: ${label} failed (${res.status})`, await res.text().catch(() => ''));
+/** The member has DMs turned off. That's their choice, and the report carries on without it. */
+const DMS_CLOSED = new Set([50007, 50278]);
+
+async function failed(
+  env: Bindings,
+  label: string,
+  res: { status: number; text(): Promise<string> },
+  where: { guildId?: string; channelId?: string } = {}
+): Promise<false> {
+  const body = await res.text().catch(() => '');
+  console.warn(`discord: ${label} failed (${res.status})`, body);
+
+  let code: number | undefined;
+  let message: string | undefined;
+  try {
+    ({ code, message } = JSON.parse(body) as { code?: number; message?: string });
+  } catch {
+    // Not every failure has a JSON body.
+  }
+  if (code !== undefined && DMS_CLOSED.has(code)) return false;
+
+  const guildId =
+    where.guildId ?? (where.channelId ? await getGuildIdForChannel(env.DB, where.channelId).catch(() => null) : null);
+  await recordFailure(env, { source: 'discord', action: label, status: res.status, message, guildId });
   return false;
 }
 
@@ -74,7 +98,7 @@ export async function sendChannelMessage(
   pingUsers: string[] = []
 ): Promise<string | null> {
   const res = await createRest(env.DISCORD_TOKEN)('POST', $channels$_$messages, [channelId], message(components, pingUsers));
-  if (!res.ok) return failed(`post to channel ${channelId}`, res).then(() => null);
+  if (!res.ok) return failed(env, `post to channel ${channelId}`, res, { channelId }).then(() => null);
   return (await res.json()).id;
 }
 
@@ -85,12 +109,12 @@ export async function editChannelMessage(
   components: Container[]
 ): Promise<boolean> {
   const res = await createRest(env.DISCORD_TOKEN)('PATCH', $channels$_$messages$_, [channelId, messageId], message(components));
-  return res.ok || failed(`edit message ${messageId}`, res);
+  return res.ok || failed(env, `edit message ${messageId}`, res, { channelId });
 }
 
 export async function deleteChannelMessage(env: Bindings, channelId: string, messageId: string): Promise<boolean> {
   const res = await createRest(env.DISCORD_TOKEN)('DELETE', $channels$_$messages$_, [channelId, messageId]);
-  return res.ok || failed(`delete message ${messageId}`, res);
+  return res.ok || failed(env, `delete message ${messageId}`, res, { channelId });
 }
 
 /**
@@ -109,13 +133,13 @@ export async function startThread(
     // 1 day: always allowed. Longer windows depend on the server's boost level.
     auto_archive_duration: 1440,
   });
-  return res.ok || failed(`start thread on message ${messageId}`, res);
+  return res.ok || failed(env, `start thread on message ${messageId}`, res, { channelId });
 }
 
 export async function sendDirectMessage(env: Bindings, userId: string, components: Container[]): Promise<boolean> {
   const rest = createRest(env.DISCORD_TOKEN);
   const channel = await rest('POST', $users$me$channels, [], { recipient_id: userId });
-  if (!channel.ok) return failed(`open DM with ${userId}`, channel);
+  if (!channel.ok) return failed(env, `open DM with ${userId}`, channel);
 
   const { id } = (await channel.json()) as { id: string };
   return (await sendChannelMessage(env, id, components)) !== null;
@@ -142,6 +166,6 @@ export async function setMemberRole(
     [guildId, userId, roleId]
   );
   if (res.ok) return null;
-  await failed(`${present ? 'add' : 'remove'} role ${roleId} for ${userId}`, res);
+  await failed(env, `${present ? 'add' : 'remove'} role ${roleId} for ${userId}`, res, { guildId });
   return res.status === 403 ? 'missing_permissions' : 'unknown';
 }

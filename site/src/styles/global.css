@@ -2868,6 +2868,8 @@ h2 {
 .admin-nav {
   position: relative;
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: 4px;
   padding: 4px;
   background: rgba(15, 16, 19, 0.7);
@@ -3295,6 +3297,387 @@ h2 {
   }
   .log-detail {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Admin overview and failures */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.insight-panel {
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.insight-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: none;
+  margin-bottom: 18px;
+  font: 500 15px var(--font-body);
+  letter-spacing: 0;
+}
+
+.insight-panel h2 .i {
+  color: var(--brand);
+}
+
+.insight-sub {
+  max-width: none;
+  margin: 16px 0 8px;
+  color: var(--muted);
+  font: 500 12px var(--font-body);
+  letter-spacing: 0;
+}
+
+.insight-sub:first-of-type {
+  margin-top: 0;
+}
+
+.insight-note,
+.insight-empty {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.5;
+}
+
+.insight-empty {
+  margin: 0;
+  font-size: 13px;
+}
+
+.insight-stat {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.insight-stat b {
+  color: var(--text);
+  font: 500 13px var(--font-mono);
+}
+
+.health-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.health-issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.health-issue .i {
+  margin-top: 2px;
+}
+
+.health-issue[data-level='serious'] {
+  color: var(--down);
+}
+
+.health-issue[data-level='warning'] {
+  color: var(--warn);
+}
+
+.health-ok {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--ok);
+  font-size: 13px;
+}
+
+.insight-rows {
+  display: grid;
+  gap: 2px;
+}
+
+.insight-row,
+.attention-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  margin: 0 -8px;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.attention-row {
+  align-items: flex-start;
+}
+
+.insight-row:hover,
+.attention-row:hover {
+  background: var(--surface-hover);
+}
+
+.insight-panel .server-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.attention-row b {
+  display: block;
+  margin-bottom: 3px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.insight-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.insight-row-aside {
+  flex-shrink: 0;
+  color: var(--muted);
+  font: 400 12px var(--font-mono);
+}
+
+.funnel {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.funnel li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 12px;
+}
+
+.funnel-label {
+  font-size: 13px;
+}
+
+.funnel-value {
+  order: 1;
+  color: var(--muted);
+  font: 400 12px var(--font-mono);
+  text-align: right;
+}
+
+.funnel-value b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.funnel-track {
+  display: block;
+  grid-column: 1 / -1;
+  order: 2;
+  height: 8px;
+  background: var(--surface-hover);
+}
+
+.funnel-track i {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  border-radius: 0 4px 4px 0;
+}
+
+.insight-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  margin: 0;
+}
+
+.insight-facts dt {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.insight-facts dd {
+  margin: 0;
+  font: 500 16px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.week-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.week-chart {
+  margin: 0;
+}
+
+.week-chart figcaption {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.week-chart figcaption b {
+  color: var(--text);
+  font: 500 13px var(--font-mono);
+}
+
+.week-bars {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  align-items: end;
+  gap: 2px;
+  height: 84px;
+  border-bottom: 1px solid var(--border);
+}
+
+.week-bar {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+}
+
+.week-bar:hover {
+  background: var(--surface-hover);
+}
+
+.week-bar i {
+  display: block;
+  width: 100%;
+  background: var(--brand);
+  border-radius: 4px 4px 0 0;
+}
+
+.week-bar i[data-empty='yes'] {
+  height: 0;
+}
+
+.week-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  color: var(--muted);
+  font: 400 11px var(--font-body);
+}
+
+.storage-meter {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.storage-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.storage-label b {
+  font: 500 13px var(--font-mono);
+}
+
+.server-badge[data-status='pro'] {
+  --state: var(--brand);
+}
+
+.server-badge[data-status='attention'] {
+  --state: var(--warn);
+}
+
+.server-badge[data-status='serious'] {
+  --state: var(--down);
+}
+
+.failure-tabs {
+  margin: 0 0 16px;
+}
+
+.admin-filter {
+  text-decoration: none;
+}
+
+.admin-section a.admin-filter {
+  color: var(--muted);
+}
+
+.admin-section a.admin-filter:hover,
+.admin-section a.admin-filter[aria-current='true'] {
+  color: var(--text);
+}
+
+.admin-filter[aria-current='true'] {
+  background: var(--navy);
+  border-color: var(--navy-line);
+}
+
+.term-body.static {
+  height: auto;
+  min-height: 0;
+  max-height: 70vh;
+}
+
+.failure-line .log-prompt {
+  color: var(--down);
+}
+
+.failure-detail {
+  padding: 10px 16px 14px 142px;
+  background: rgba(229, 118, 111, 0.05);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font: 400 13px/1.6 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.failure-detail p {
+  margin: 0;
+}
+
+.failure-detail .log-links {
+  margin-top: 8px;
+}
+
+@media (max-width: 860px) {
+  .insight-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .failure-detail {
+    padding-left: 16px;
   }
 }
 

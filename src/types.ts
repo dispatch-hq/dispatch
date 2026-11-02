@@ -151,6 +151,9 @@ export type AdminServerRow = {
   last_seen: number;
   left_at: number | null;
   refreshed_at: number | null;
+  permissions: string | null;
+  pro: number;
+  pro_ends: number | null;
 };
 
 /** A row of the server list, with what Dispatch itself knows about the server. */
@@ -163,6 +166,22 @@ export type AdminServerSummary = Omit<AdminServerRow, 'owner' | 'details' | 'las
   repos: number;
   configured: number;
   last_command_at: number | null;
+  /** Reports waiting in triage. */
+  pending: number;
+  oldest_pending: string | null;
+  /** In the last 7 days. */
+  failures: number;
+};
+
+export type FailureLogEntry = {
+  id: number;
+  at: number;
+  source: string;
+  action: string;
+  message: string | null;
+  status: number | null;
+  guild_id: string | null;
+  guild_name: string | null;
 };
 
 /** A line of the activity page, with the server's name as last synced. */

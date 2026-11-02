@@ -28,7 +28,7 @@ import Base from '../layouts/Base.astro';
       let shown = 0;
       for (const card of cards) {
         const haystack = card.dataset.search ?? '';
-        const match = terms.every((term) => haystack.includes(term)) && (status === 'all' || card.dataset.status === status);
+        const match = terms.every((term) => haystack.includes(term)) && (status === 'all' || card.dataset.status === status || !!card.dataset.tags?.split(' ').includes(status));
         card.hidden = !match;
         if (match) shown++;
       }

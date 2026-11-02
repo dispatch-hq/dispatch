@@ -3,7 +3,7 @@ import { verifyCard } from './cards';
 import * as handlers from './commands';
 import { factory } from './init';
 import { syncServers } from './services/admin-servers';
-import { pruneCommands, recordCommand } from './services/activity';
+import { pruneLogs, recordCommand } from './services/activity';
 import type { AppEnv, Bindings } from './types';
 import { adminRoutes } from './web/admin';
 import { githubRoutes } from './web/github';
@@ -92,9 +92,9 @@ app.get('/cards/:file{.+\\.png}', async (c) => {
 
 export default {
   fetch: app.fetch,
-  // The hourly sync behind the private server list, and the activity log's cleanup.
+  // The hourly sync behind the private server list, and the admin logs' cleanup.
   scheduled(_controller, env, ctx) {
     ctx.waitUntil(syncServers(env).catch((error) => console.error('admin: server sync failed', error)));
-    ctx.waitUntil(pruneCommands(env));
+    ctx.waitUntil(pruneLogs(env));
   },
 } satisfies ExportedHandler<Bindings>;
