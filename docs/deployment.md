@@ -11,7 +11,7 @@ Dispatch is a single Cloudflare Worker. Discord and GitHub both reach it over HT
 | `GET /files/reports/*` | Anyone with the link | Attachments rehosted from Discord |
 | `GET /` | Anyone | Landing site (static assets from `site/`) |
 | `GET /invite` | Anyone | Redirects to Discord's *Add to Discord* authorize page for this environment |
-| `GET /api/status` | The `/status` page | Server/member counts plus database and Discord health (counts cached for 10 minutes per isolate) |
+| `GET /api/status` | The `/status` page | Server/member counts plus database and Discord health (counts stored in D1 and refreshed every 10 minutes) |
 | `GET /shell/` | The Worker | Hidden site frame that the GitHub sign-in pages are rendered into |
 
 Below, `PUBLIC_URL` is the Worker's public origin, e.g. `https://dispatch.example.workers.dev`. Repeat each step for the **beta** environment (`--env beta`) if you use one.

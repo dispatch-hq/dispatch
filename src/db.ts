@@ -7,6 +7,7 @@ import type {
   ReportRow,
   ReportStatus,
   RewardTier,
+  StatusCountsRow,
 } from './types';
 
 /* -------------------------------------------------------------------------- */
@@ -601,4 +602,39 @@ export async function deleteRewardTier(db: D1Database, guildId: string, roleId: 
     .bind(guildId, roleId)
     .run();
   return result.meta.changes > 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                Status counts                               */
+/* -------------------------------------------------------------------------- */
+
+export function getStatusCounts(db: D1Database) {
+  return db.prepare(`SELECT * FROM status_counts WHERE id = 1`).first<StatusCountsRow>();
+}
+
+/** True for the one caller that should refresh; the claim lapses if it was last taken at or before `expiredAt`. */
+export async function claimStatusRefresh(db: D1Database, now: number, expiredAt: number) {
+  const result = await db
+    .prepare(
+      `INSERT INTO status_counts (id, claimed_at) VALUES (1, ?)
+       ON CONFLICT (id) DO UPDATE SET claimed_at = excluded.claimed_at
+       WHERE status_counts.claimed_at <= ?`
+    )
+    .bind(now, expiredAt)
+    .run();
+  return result.meta.changes > 0;
+}
+
+export async function saveStatusCounts(
+  db: D1Database,
+  counts: { servers: number; members: number; ms: number; at: number }
+) {
+  await db
+    .prepare(`UPDATE status_counts SET servers = ?, members = ?, ms = ?, read_at = ?, discord_ok = 1 WHERE id = 1`)
+    .bind(counts.servers, counts.members, counts.ms, counts.at)
+    .run();
+}
+
+export async function setStatusDiscordOk(db: D1Database, ok: boolean) {
+  await db.prepare(`UPDATE status_counts SET discord_ok = ? WHERE id = 1`).bind(ok ? 1 : 0).run();
 }
