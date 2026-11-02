@@ -122,3 +122,13 @@ export type RewardTier = {
   role_id: string;
   threshold: number;
 };
+
+export type StatusCountsRow = {
+  id: number;
+  servers: number | null;
+  members: number | null;
+  ms: number | null;
+  read_at: number | null;
+  discord_ok: number;
+  claimed_at: number;
+};
